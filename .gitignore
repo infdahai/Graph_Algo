@@ -5,3 +5,5 @@ data/
 .idea
 .DS_Store
 *~
+*.txt
+.history/
