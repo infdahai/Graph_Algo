@@ -21,7 +21,26 @@ target_link_libraries(algo_BellmanFordTest
         core_Graph
         core_MessageSet
         core_GraphUtil)
-		
+                
+        
+#//////////////////
+
+set(OpenCL_INCLUDE_DIR "/usr/local/cuda-10.0/include/CL")
+set(OpenCL_LIBRARY "/usr/local/cuda-10.0/lib64/libOpenCL.so")
+include_directories(${OpenCL_INCLUDE_DIR})
+#link_directories(${OpenCL_LIBRARY})
+add_executable(algo_BellmanFordCLTest
+        BellmanFordCLTest.cpp)
+
+target_link_libraries(algo_BellmanFordCLTest
+        algo_BellmanFordCL
+        core_Graph
+        core_MessageSet
+        core_GraphUtil)
+
+#//////////////////
+
+
 add_executable(algo_LabelPropagationTest
 		LabelPropagationTest.cpp)
 
