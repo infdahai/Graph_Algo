@@ -7,10 +7,7 @@
 int main()
 {
 
-    cl_platform_id platform;
-    cl_context gpuContext;
-    cl_context cpuContext;
-    cl_int errNum;
+  
 
     //Read the Graph
     std::ifstream Gin("testGraph.txt");

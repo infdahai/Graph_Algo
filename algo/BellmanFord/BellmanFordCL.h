@@ -8,6 +8,15 @@
 #include "BellmanFord.h"
 #include "../../include/GPUconfig.h"
 
+#include <iostream>
+#include <algorithm>
+#include <fstream>
+#include <sstream>
+//#include <pthread.h>
+#include <cfloat>
+#include <ctime>
+
+
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
 #else
@@ -15,6 +24,7 @@
 #include <CL/cl.h>
 
 #endif
+
 
 template<typename VertexValueType, typename MessageValueType>
 class BellmanFordCL : public BellmanFord<VertexValueType, MessageValueType> {
@@ -84,8 +94,13 @@ protected:
     bool GPU_isOrNot = true;
     cl_uint device_count;
     CL_DEVICE *cl_device_array;
-    cl_platform_id platform;
-    cl_context cpu_contxt, gpu_context;
+    cl_device_id *devices;
+
+    cl_platform_id platform = 0;
+    cl_uint numPlatforms;
+    cl_platform_id *platformIds;
+
+    cl_context cpu_contxt, gpu_context = NULL;
     cl_program program;
     cl_command_queue comman_queue;
     cl_kernel kernel;
@@ -93,7 +108,7 @@ protected:
     cl_event readDone;
     size_t local_work_size;
     size_t global_work_size;
-
+   // int numOfInitV;
     // cl_mem vertexArrayDevice;
     // cl_mem edgeArrayDevice;
     // cl_mem weightArrayDevice;
@@ -102,23 +117,29 @@ protected:
     // cl_mem updatingCostArrayDevice;
 
 private:
-    /*
-    auto MSGGenMerge_GPU_MVCopy(Vertex *d_vSet, const Vertex *vSet,
-                                double *d_vValues, const double *vValues,
-                                unsigned long long int *d_mTransformedMergedMSGValueSet,
-                                unsigned long long int *mTransformedMergedMSGValueSet,
-                                int vGCount, int numOfInitV);
 
-    auto MSGApply_GPU_VVCopy(Vertex *d_vSet, const Vertex *vSet,
-                             double *d_vValues, const double *vValues,
-                             int vGCount, int numOfInitV);
-                             */
 };
+
+
+void displayPlatformInfo(
+        cl_platform_id id,
+        cl_platform_info name,
+        std::string str);
+
+template<typename T>
+void displayDeviceInfo(
+        cl_device_id id,
+        cl_device_info name,
+        std::string str
+);
 
 
 void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber);
 
 cl_device_id getMaxFlopsDev(cl_context cxGPUContext);
 
+int logError(int, const std::string &);
+
+int roundWorkSize(int, int);
 
 #endif //GRAPH_ALGO_BELLMANFORD_CL_H

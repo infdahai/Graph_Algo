@@ -1,4 +1,4 @@
-#define INT_MAX32 2147483647i32
+#define INT_MAX32 2147483647
 
 typedef struct Vertex {
   int vertexID;
@@ -35,7 +35,7 @@ __kernel void MSGApply_kernel(__global Vertex *vSet, int numOfInitV,
 
 __kernel void MSGApply_array(__global Vertex *vSet, __global Edge *eSet,
                              __global int *initVSet, __global double *vValues,
-                             __global double *mValues, int vCount, int eCount) {
+                             __global double *mValues, int vCount, int eCount,int numOfInitV) {
   int avCount = 0;
   for (int i = 0; i < vCount; i++) {
     vSet[i].isActive = false;
@@ -55,7 +55,7 @@ __kernel void MSGGenMerge_array_CL(__global Vertex *vSet, __global Edge *eSet,
                                    __global int *initVSet,
                                    __global double *vValues,
                                    __global double *mValues, int vCount,
-                                   int eCount) {
+                                   int eCount,numOfInitV) {
   for (int i = 0; i < vCount * numOfInitV; i++) {
     mValues[i] = INT_MAX32;
   }
@@ -71,4 +71,4 @@ __kernel void MSGGenMerge_array_CL(__global Vertex *vSet, __global Edge *eSet,
   }
 }
 
-//__kernel void MergeGraph() {}
+

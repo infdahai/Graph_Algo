@@ -1,19 +1,19 @@
 #include "BellmanFordCL.h"
 
-#include <iostream>
-#include <algorithm>
-#include <fstream>
-#include <sstream>
-//#include <pthread.h>
-#include <cfloat>
-#include <ctime>
-
 
 #define NULLMSG -1
 #define Check_Err(m, n) checkErrorFileLine(m, n, __FILE__, __LINE__)
 #define GetMaxPerDev(clcontext) getMaxFlopsDev(clcontext)
 
-int roundWorkSize(int, int);
+#define DEBUG_INFO std::cout<< "DEBUG_INFO::Line : " << __LINE__ << " in File : " <<__FILE__ <<\
+                        std::endl;
+
+#define  LOG(message) logError(__LINE__,message);
+
+int logError(int line, const std::string &message) {
+    std::cerr << "[" << line << "]" << message << std::endl;
+}
+
 
 int roundWorkSize(int group_size, int total_size) {
     int rem = total_size % group_size;
@@ -37,10 +37,23 @@ loadAndBuildProgram(cl_context context, const char *file_name) {
     oss << kernelFile.rdbuf();
 
     std::string srcStdStr = oss.str();
+    // std::cout<<"\n\n"<<srcStdStr<<"\n"<<std::endl;
     const char *sourceFile = srcStdStr.c_str();
     Check_Err((sourceFile != NULL), true);
-    this->program = clCreateProgramWithSource(context, 1, (const char **) sourceFile, NULL, &errNum);
-    clBuildProgram(this->program, 0, NULL, NULL, NULL, NULL);
+
+    DEBUG_INFO
+    // std::cout << "\tcontext:" << context << "\tfile_name" << file_name << std::endl;
+    this->program = clCreateProgramWithSource(context, 1, (const char **) &sourceFile, NULL, &errNum);
+    Check_Err(errNum, CL_SUCCESS);
+    errNum = clBuildProgram(this->program, 0, NULL, NULL, NULL, NULL);
+    if (errNum != CL_SUCCESS) {
+        char clBuildLog[10240];
+        clGetProgramBuildInfo(this->program, devices[0], CL_PROGRAM_BUILD_LOG, sizeof(clBuildLog),
+                              clBuildLog, NULL);
+        std::cerr << clBuildLog << std::endl;
+        Check_Err(errNum, CL_SUCCESS);
+    }
+    DEBUG_INFO
 }
 
 template<typename VertexValueType, typename MessageValueType>
@@ -52,28 +65,63 @@ Init(int vCount, int eCount, int numOfInitV) {
     this->mPerMSGSet = MSGSCALEINGPU;
     this->ePerEdgeSet = EDGESCALEINGPU;
 
-    cl_uint numPlatforms;
-    errNum = clGetPlatformIDs(1, &this->platform, &numPlatforms);
-    std::cout << "Number of OpenCL Platforms: " << numPlatforms << std::endl;
-
+    errNum = clGetPlatformIDs(0, NULL, &numPlatforms);
     if (errNum != CL_SUCCESS || numPlatforms <= 0) {
-        std::cout << "Failed to find any OpenCL platforms." << std::endl;
-        return;
+        LOG("Failed to find any OpenCL platforms.")
+    }
+    std::cout << "\tNumber of OpenCL Platforms: \t" << numPlatforms << std::endl;
+
+    platformIds = (cl_platform_id *) alloca(sizeof(cl_platform_id) * numPlatforms);
+    errNum = clGetPlatformIDs(numPlatforms, platformIds, NULL);
+
+    // errNum = clGetPlatformIDs(1, &platform, &numPlatforms);
+
+
+    for (cl_uint i = 0; i < numPlatforms; i++) {
+        displayPlatformInfo(platformIds[i], CL_PLATFORM_PROFILE, "CL_PLATFORM_PROFILE");
+        displayPlatformInfo(platformIds[i], CL_PLATFORM_VERSION, "CL_PLATFORM_VERSION");
+        displayPlatformInfo(platformIds[i], CL_PLATFORM_VENDOR, "CL_PLATFORM_VENDOR");
+        displayPlatformInfo(platformIds[i], CL_PLATFORM_EXTENSIONS, "CL_PLATFORM_EXTENSIONS");
     }
 
-    gpu_context = clCreateContextFromType(0, CL_DEVICE_TYPE_GPU, NULL, NULL, &errNum);
-    // cpu_contxt = clCreateContextFromType(0, CL_DEVICE_TYPE_CPU, NULL, NULL, &errNum);
+    errNum = clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_ALL, 0, NULL, &device_count);
+    devices = (cl_device_id *) alloca(sizeof(cl_device_id) * device_count);
+    errNum = clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_ALL, device_count, devices, NULL);
+    std::cout << "\tNumber of devices in platform[0]: \t" << device_count << std::endl;
+    for (cl_uint j = 0; j < device_count; j++) {
+        displayDeviceInfo<cl_device_type>(devices[j], CL_DEVICE_TYPE, "CL_DEVICE_TYPE");
+    }
+
+    cl_context_properties context_properties[] = {
+            CL_CONTEXT_PLATFORM,
+            (cl_context_properties) platformIds[0],
+            (cl_context_properties) NULL
+    };
+
+    DEBUG_INFO
+    // gpu_context = clCreateContext(0, 1, device_count, NULL, NULL, &errNum);
+    gpu_context = clCreateContextFromType(context_properties, CL_DEVICE_TYPE_GPU, NULL, NULL, &errNum);
+    if (errNum != CL_SUCCESS) {
+        LOG("No GPU devices found.")
+    }
+
     if (this->GPU_isOrNot) {
         if (this->MutliGPU_isOrNot) {
             size_t deviceBytes;
             cl_int errNum = clGetContextInfo(gpu_context, CL_CONTEXT_DEVICES, 0, NULL, &deviceBytes);
             Check_Err(errNum, CL_SUCCESS);
             this->device_count = (cl_uint) deviceBytes / sizeof(cl_device_id);
-            //   auto this->cl_device_array = new CL_DEVICE[this->device_count];
-            //
         } else {
+            DEBUG_INFO
+            //     printf("%d\n", gpu_context != NULL);
             cl_device_id device_id = GetMaxPerDev(gpu_context);
+            //      printf("%d\n", device_id != NULL);
+            DEBUG_INFO
+
             this->comman_queue = clCreateCommandQueue(gpu_context, device_id, 0, &errNum);
+            //   printf("%d\n", comman_queue != NULL);
+            DEBUG_INFO
+
             loadAndBuildProgram(gpu_context, "../Graph_Algo/algo/BellmanFord/BellmanFordCL_kernel.cl");
             size_t max_workgroup_size;
             clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_workgroup_size, NULL);
@@ -95,15 +143,8 @@ BellmanFordCL<VertexValueType, MessageValueType>::GraphInit(Graph<VertexValueTyp
 template<typename VertexValueType, typename MessageValueType>
 void BellmanFordCL<VertexValueType, MessageValueType>::Deploy(int vCount, int eCount, int numOfInitV) {
     BellmanFord<VertexValueType, MessageValueType>::Deploy(vCount, eCount, numOfInitV);
+//    kernel = clCreateKernel(this->program, "BellmanFordCLKernel", &errNum);
 
-    kernel = clCreateKernel(this->program, "BellmanFordCLKernel", &errNum);
-    Check_Err(errNum, CL_SUCCESS);
-
-    // errNum = CL_SUCCESS;
-
-    //  this->initVSet = new int[numOfInitV];
-//    this->vValueSet = new VertexValueType[vCount * this->numOfInitV];
-    //   int mSize = std::max(this->numOfInitV * ePerEdgeSet, mPerMSGSet);
 }
 
 template<typename VertexValueType, typename MessageValueType>
@@ -193,6 +234,7 @@ BellmanFordCL<VertexValueType, MessageValueType>::MSGApply(Graph<VertexValueType
     errNum |= clSetKernelArg(MSGApply_array_kernel, 4, sizeof(cl_mem), &this->mValues);
     errNum |= clSetKernelArg(MSGApply_array_kernel, 5, sizeof(int), &g.vCount);
     errNum |= clSetKernelArg(MSGApply_array_kernel, 6, sizeof(int), &g.eCount);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 7, sizeof(int), &this->numOfInitV);
     Check_Err(errNum, CL_SUCCESS);
 
 
@@ -225,9 +267,9 @@ BellmanFordCL<VertexValueType, MessageValueType>::MSGApply(Graph<VertexValueType
 
 template<typename VertexValueType, typename MessageValueType>
 int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<VertexValueType> &g,
-                                                                  std::vector<int> &initVSet,
-                                                                  std::set<int> &activeVertice,
-                                                                  MessageSet<MessageValueType> &mSet) {
+                                                                     std::vector<int> &initVSet,
+                                                                     std::set<int> &activeVertice,
+                                                                     MessageSet<MessageValueType> &mSet) {
 
     if (g.vCount <= 0)
         return 0;
@@ -237,7 +279,7 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<Verte
                  g.eCount);
     //  void Buffer_alloc(const Vertex *vSet, const Edge *eSet, int numOfInitV, const int *initVSet, const VertexValueType *vValues, MessageValueType *mValues);
 
-
+    DEBUG_INFO
     MSGGenMerge_array_CL_kernel = clCreateKernel(program, "MSGGenMerge_array_CL", &errNum);
     Check_Err(errNum, CL_SUCCESS);
 
@@ -248,12 +290,14 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<Verte
     errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 4, sizeof(cl_mem), &this->mValues);
     errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 5, sizeof(int), &g.vCount);
     errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 6, sizeof(int), &g.eCount);
+    errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 7, sizeof(int), &this->numOfInitV);
     Check_Err(errNum, CL_SUCCESS);
-
+    DEBUG_INFO
     //MSGGenMerge_array(g.vCount, g.eCount, &g.vList[0], &g.eList[0], this->numOfInitV, &initVSet[0], &g.verticesValue[0], mValues)
     errNum = clEnqueueNDRangeKernel(comman_queue, MSGGenMerge_array_CL_kernel,
                                     1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
     Check_Err(errNum, CL_SUCCESS);
+    DEBUG_INFO
     clWaitForEvents(1, &readDone);
 
     /*
@@ -272,12 +316,15 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<Verte
     clWaitForEvents(1, &readDone);
 
     for (int i = 0; i < g.vCount * this->numOfInitV; i++) {
+        std::cout << "mValues:" << mValues << std::endl;
         if (mValues[i] != (MessageValueType) INVALID_MASSAGE) {
             int dst = i / this->numOfInitV;
             int initV = initVSet[i % this->numOfInitV];
             mSet.insertMsg(Message<MessageValueType>(initV, dst, mValues[i]));
+            std::cout << "dst:" << dst << "\tinitV:" << initV << std::endl;
         }
     }
+
     free(mValues);
     return mSet.mSet.size();
 }
@@ -347,8 +394,9 @@ void BellmanFordCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexVal
             auto mMergedSet = MessageSet<MessageValueType>();
             mMergedSet.mSet.clear();
 
+            DEBUG_INFO
             MSGGenMerge_CL(g, initVSet, activeVertices, mMergedSet);
-
+            DEBUG_INFO
             //Test
             std::cout << "MGenMerge:" << clock() << std::endl;
             //Test end
@@ -377,6 +425,7 @@ void BellmanFordCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexVal
 
 void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber) {
     if (errNum != expected) {
+        std::cout << "\nCheck Error:" << std::endl;
         std::cerr << "Line : " << lineNumber << " in File_ " << file << std::endl;
         exit(1);
     }
@@ -439,3 +488,92 @@ cl_device_id getMaxFlopsDev(cl_context cxGPUContext) {
 }
 
 
+template<typename T>
+void displayDeviceInfo(
+        cl_device_id id,
+        cl_device_info name,
+        std::string str
+) {
+    cl_int errNUm;
+    std::size_t paramValueSize;
+    errNUm = clGetDeviceInfo(id, name, 0, NULL, &paramValueSize);
+    if (errNUm != CL_SUCCESS)
+        std::cout << "Failed to find opencl device info" << std::endl;
+
+    T *info = (T *) alloca(sizeof(T) * paramValueSize);
+    errNUm = clGetDeviceInfo(id, name, paramValueSize, info, NULL);
+    if (errNUm != CL_SUCCESS)
+        std::cout << "Failed to find opencl device info" << std::endl;
+
+//  since c++20, use generic lambda
+    using T1 =cl_device_type;
+    auto appendStr = [](T1 info, T1 value, std::string name, std::string &str) {
+        if (info & value) {
+            if (str.length() > 0)
+                str.append("|");
+            str.append(name);
+        }
+    };
+
+
+    switch (name) {
+        case CL_DEVICE_TYPE: {
+
+            std::string deviceType;
+            appendStr(
+                    *(reinterpret_cast<cl_device_type *>(info)),
+                    CL_DEVICE_TYPE_CPU,
+                    "CL_DEVICE_TYPE_CPU",
+                    deviceType
+            );
+            appendStr(
+                    *(reinterpret_cast<cl_device_type *>(info)),
+                    CL_DEVICE_TYPE_GPU,
+                    "CL_DEVICE_TYPE_GPU",
+                    deviceType
+            );
+            appendStr(
+                    *(reinterpret_cast<cl_device_type *>(info)),
+                    CL_DEVICE_TYPE_ACCELERATOR,
+                    "CL_DEVICE_TYPE_ACCELERATOR",
+                    deviceType
+            );
+            appendStr(
+                    *(reinterpret_cast<cl_device_type *>(info)),
+                    CL_DEVICE_TYPE_DEFAULT,
+                    "CL_DEVICE_TYPE_DEFAULT",
+                    deviceType
+            );
+            std::cout << "\t" << str << ":\t" << *info << std::endl;
+            std::cout << "\tCL_DEVICE_TYPE_INFO:\t" << deviceType << std::endl;
+
+            break;
+        }
+        default:
+            std::cout << "\t\t" << str << ":\t" << *info << std::endl;
+    }
+
+}
+
+void displayPlatformInfo(
+        cl_platform_id id,
+        cl_platform_info name,
+        std::string str) {
+    cl_int errNum;
+    std::size_t paramValueSize;
+    errNum = clGetPlatformInfo(
+            id, name, 0, NULL, &paramValueSize
+    );
+    if (errNum != CL_SUCCESS) {
+        std::cerr << "Failed to find OpenCL platform " << str << "." << std::endl;
+    }
+    auto info = (char *) alloca(sizeof(char) * paramValueSize);
+    errNum = clGetPlatformInfo(
+            id, name, paramValueSize, info, NULL
+    );
+    if (errNum != CL_SUCCESS) {
+        std::cerr << "Failed to find OpenCL platform " << str << "." << std::endl;
+    }
+    std::cout << "\t" << str << ":\t" << info << std::endl;
+
+}
