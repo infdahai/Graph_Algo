@@ -16,7 +16,6 @@
 #include <cfloat>
 #include <ctime>
 
-
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
 #else
@@ -25,9 +24,9 @@
 
 #endif
 
-
-template<typename VertexValueType, typename MessageValueType>
-class BellmanFordCL : public BellmanFord<VertexValueType, MessageValueType> {
+template <typename VertexValueType, typename MessageValueType>
+class BellmanFordCL : public BellmanFord<VertexValueType, MessageValueType>
+{
 public:
     BellmanFordCL();
 
@@ -47,7 +46,7 @@ public:
     MSGGenMerge_CL(Graph<VertexValueType> &g, std::vector<int> &initVSet, std::set<int> &activeVertice,
                    MessageSet<MessageValueType> &mSet);
 
-//    int MSGApply_array(int vCount, int eCount, Vertex *vSet, int numOfInitV, const int *initVSet, VertexValueType *vValues,MessageValueType *mValues) override;
+    //    int MSGApply_array(int vCount, int eCount, Vertex *vSet, int numOfInitV, const int *initVSet, VertexValueType *vValues,MessageValueType *mValues) override;
     //   int MSGGenMerge_array(int vCount, int eCount, const Vertex *vSet, const Edge *eSet, int numOfInitV, const int *initVSet, const VertexValueType *vValues, MessageValueType *mValues) override;
 
     //  cl_device_id getMaxFlopsDev(cl_context);
@@ -55,8 +54,9 @@ public:
 
     void ApplyD_CL(Graph<VertexValueType> &g, std::vector<int> &initVList, int partitionCount);
 
-    void Buffer_alloc(Vertex *vSet, Edge *eSet, int numOfInitV, int *initVSet, VertexValueType *vValues,
-                      MessageValueType *mValues, int vcount, int ecount);
+    void Buffer_alloc(Vertex *vSet, Edge *eSet, int numOfInitV, VertexValueType *vValues,
+                      MessageValueType *mValues, int vcount, int ecount, bool flag);
+    void Free_little(bool);
 
 protected:
     int vertexLimit;
@@ -65,26 +65,28 @@ protected:
 
     cl_mem hostVSet;
     cl_mem hostESet;
-    cl_mem host_initVSet;
+    //   cl_mem host_initVSet;
     //  cl_int host_avCount;
     cl_mem hostVValues;
     cl_mem hostMValues;
 
     cl_mem vSet;
     cl_mem eSet;
-    cl_mem initVSet;
+    //  cl_mem initVSet;
     cl_mem vValues;
     cl_mem mValues;
     //   cl_int avCount;
     cl_kernel MSGApply_array_kernel;
     cl_kernel MSGGenMerge_array_CL_kernel;
 
-    typedef struct CL_device {
+    typedef struct CL_device
+    {
         cl_context context;
         cl_device_id device;
         int numResults;
 
-        CL_device() {
+        CL_device()
+        {
             context = 0;
             device = 0;
             numResults = 0;
@@ -108,7 +110,7 @@ protected:
     cl_event readDone;
     size_t local_work_size;
     size_t global_work_size;
-   // int numOfInitV;
+    // int numOfInitV;
     // cl_mem vertexArrayDevice;
     // cl_mem edgeArrayDevice;
     // cl_mem weightArrayDevice;
@@ -117,22 +119,18 @@ protected:
     // cl_mem updatingCostArrayDevice;
 
 private:
-
 };
 
-
 void displayPlatformInfo(
-        cl_platform_id id,
-        cl_platform_info name,
-        std::string str);
+    cl_platform_id id,
+    cl_platform_info name,
+    std::string str);
 
-template<typename T>
+template <typename T>
 void displayDeviceInfo(
-        cl_device_id id,
-        cl_device_info name,
-        std::string str
-);
-
+    cl_device_id id,
+    cl_device_info name,
+    std::string str);
 
 void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber);
 

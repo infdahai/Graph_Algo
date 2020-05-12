@@ -34,8 +34,8 @@ __kernel void MSGApply_kernel(__global Vertex *vSet, int numOfInitV,
 */
 
 __kernel void MSGApply_array(__global Vertex *vSet, __global Edge *eSet,
-                             __global int *initVSet, __global double *vValues,
-                             __global double *mValues, int vCount, int eCount,int numOfInitV) {
+                             __global double *vValues, __global double *mValues,
+                             int vCount, int eCount, int numOfInitV) {
   int avCount = 0;
   for (int i = 0; i < vCount; i++) {
     vSet[i].isActive = false;
@@ -49,13 +49,13 @@ __kernel void MSGApply_array(__global Vertex *vSet, __global Edge *eSet,
       }
     }
   }
+//  printf("acCount:%d\n", avCount);
 }
 
 __kernel void MSGGenMerge_array_CL(__global Vertex *vSet, __global Edge *eSet,
-                                   __global int *initVSet,
                                    __global double *vValues,
                                    __global double *mValues, int vCount,
-                                   int eCount,numOfInitV) {
+                                   int eCount, numOfInitV) {
   for (int i = 0; i < vCount * numOfInitV; i++) {
     mValues[i] = INT_MAX32;
   }
@@ -70,5 +70,3 @@ __kernel void MSGGenMerge_array_CL(__global Vertex *vSet, __global Edge *eSet,
     }
   }
 }
-
-
