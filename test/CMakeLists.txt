@@ -30,7 +30,7 @@ set(OpenCL_LIBRARY "/usr/local/cuda-10.0/lib64/libOpenCL.so")
 include_directories(${OpenCL_INCLUDE_DIR})
 #link_directories(${OpenCL_LIBRARY})
 add_executable(algo_BellmanFordCLTest
-        BellmanFordCLTest.cpp)
+        BellmanFordCL_Test.cpp)
 
 target_link_libraries(algo_BellmanFordCLTest
         algo_BellmanFordCL

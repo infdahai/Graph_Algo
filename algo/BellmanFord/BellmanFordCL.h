@@ -41,10 +41,14 @@ public:
 
     int MSGApply(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice,
                  const MessageSet<MessageValueType> &mSet) override;
-
+    int MSGApply1(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice,
+                  const MessageSet<MessageValueType> &mSet);
     int
     MSGGenMerge_CL(Graph<VertexValueType> &g, std::vector<int> &initVSet, std::set<int> &activeVertice,
                    MessageSet<MessageValueType> &mSet);
+    int
+    MSGGenMerge_CL1(Graph<VertexValueType> &g, std::vector<int> &initVSet, std::set<int> &activeVertice,
+                    MessageSet<MessageValueType> &mSet);
 
     //    int MSGApply_array(int vCount, int eCount, Vertex *vSet, int numOfInitV, const int *initVSet, VertexValueType *vValues,MessageValueType *mValues) override;
     //   int MSGGenMerge_array(int vCount, int eCount, const Vertex *vSet, const Edge *eSet, int numOfInitV, const int *initVSet, const VertexValueType *vValues, MessageValueType *mValues) override;
@@ -56,6 +60,9 @@ public:
 
     void Buffer_alloc(Vertex *vSet, Edge *eSet, int numOfInitV, VertexValueType *vValues,
                       MessageValueType *mValues, int vcount, int ecount, bool flag);
+
+    void Buffer_alloc1(Vertex *vSet, Edge *eSet, int numOfInitV, VertexValueType *vValues,
+                       MessageValueType *mValues, int vcount, int ecount, int flag);
     void Free_little(bool);
 
 protected:
@@ -78,6 +85,7 @@ protected:
     //   cl_int avCount;
     cl_kernel MSGApply_array_kernel;
     cl_kernel MSGGenMerge_array_CL_kernel;
+    cl_kernel MSGInitial_array_kernel;
 
     typedef struct CL_device
     {
@@ -108,6 +116,7 @@ protected:
     cl_kernel kernel;
     cl_int errNum;
     cl_event readDone;
+  //  cl_event copyDone;
     size_t local_work_size;
     size_t global_work_size;
     // int numOfInitV;

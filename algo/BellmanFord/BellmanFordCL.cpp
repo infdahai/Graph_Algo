@@ -17,9 +17,13 @@ int roundWorkSize(int group_size, int total_size)
 {
     int rem = total_size % group_size;
     if (rem == 0)
+    {
         return total_size;
+    }
     else
+    {
         return total_size + group_size - rem;
+    }
 }
 
 template <typename VertexValueType, typename MessageValueType>
@@ -46,13 +50,20 @@ void BellmanFordCL<VertexValueType, MessageValueType>::
     this->program = clCreateProgramWithSource(context, 1, (const char **)&sourceFile, NULL, &errNum);
     Check_Err(errNum, CL_SUCCESS);
     errNum = clBuildProgram(this->program, 0, NULL, NULL, NULL, NULL);
+    char clBuildLog[10240];
     if (errNum != CL_SUCCESS)
     {
-        char clBuildLog[10240];
+
         clGetProgramBuildInfo(this->program, devices[0], CL_PROGRAM_BUILD_LOG, sizeof(clBuildLog),
                               clBuildLog, NULL);
         std::cerr << clBuildLog << std::endl;
         Check_Err(errNum, CL_SUCCESS);
+    }
+    else
+    {
+        clGetProgramBuildInfo(this->program, devices[0], CL_PROGRAM_BUILD_LOG, sizeof(clBuildLog),
+                              clBuildLog, NULL);
+        printf("Kernel Build Success\n%s\n", clBuildLog);
     }
 }
 
@@ -126,8 +137,13 @@ void BellmanFordCL<VertexValueType, MessageValueType>::
             clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_workgroup_size, NULL);
             std::cout << "max_group_size : " << max_workgroup_size << std::endl;
 
-            local_work_size = max_workgroup_size;
-            global_work_size = roundWorkSize(local_work_size, vCount);
+            //local_work_size = max_workgroup_size;
+            // modified:  apply to some small numbers.
+
+            //local_work_size = max_workgroup_size;
+            //global_work_size = roundWorkSize(local_work_size, vCount);
+            local_work_size = 1;
+            global_work_size = 1;
         }
     }
 }
@@ -166,7 +182,7 @@ void BellmanFordCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex *vSet
                   << eSet1[i].src << "," << eSet1[i].weight << std::endl;
     }
     std::cout << "vValues:" << std::endl;
-    for (inti = 0; i < numOfInitV * vcount; i++)
+    for (int i = 0; i < numOfInitV * vcount; i++)
     {
         std::cout << "vValues[" << i << "]:" << vValues1[i] << std::endl;
     }
@@ -181,9 +197,6 @@ void BellmanFordCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex *vSet
     hostESet = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
                               sizeof(Edge) * ecount, eSet1, &errNum);
     Check_Err(errNum, CL_SUCCESS);
-    //      host_initVSet = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
-    //                                   sizeof(int), initVSet1, &errNum);
-    //   Check_Err(errNum, CL_SUCCESS);
     hostVValues = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
                                  sizeof(VertexValueType) * numOfInitV * vcount, vValues1, &errNum);
     Check_Err(errNum, CL_SUCCESS);
@@ -196,11 +209,10 @@ void BellmanFordCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex *vSet
     {
         DEBUG_INFO
         vSet = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(Vertex) * vcount, NULL, &errNum);
+        //vSet = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(Vertex) * global_work_size, NULL);
         Check_Err(errNum, CL_SUCCESS);
         eSet = clCreateBuffer(gpu_context, CL_MEM_READ_ONLY, sizeof(Edge) * ecount, NULL, &errNum);
         Check_Err(errNum, CL_SUCCESS);
-        //     initVSet = clCreateBuffer(gpu_context, CL_MEM_READ_ONLY, sizeof(int), NULL, &errNum);
-        //    Check_Err(errNum, CL_SUCCESS);
         vValues = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(VertexValueType) * numOfInitV * vcount, NULL,
                                  &errNum);
         Check_Err(errNum, CL_SUCCESS);
@@ -225,8 +237,9 @@ void BellmanFordCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex *vSet
     Check_Err(errNum, CL_SUCCESS);
     DEBUG_INFO
     errNum = clEnqueueCopyBuffer(comman_queue, hostMValues, mValues, 0, 0,
-                                 sizeof(MessageValueType) * numOfInitV * vcount, 0, NULL, NULL);
+                                 sizeof(MessageValueType) * numOfInitV * vcount, 0, NULL, &copyDone);
     Check_Err(errNum, CL_SUCCESS);
+    clWaitForEvents(1, &copyDone);
     DEBUG_INFO
 }
 
@@ -244,7 +257,8 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGApply(Graph<VertexValue
         mValues[i] = (MessageValueType)INVALID_MASSAGE;
     for (int i = 0; i < mSet.mSet.size(); i++)
     {
-        auto &mv = mValues[mSet.mSet.at(i).dst * this->numOfInitV + g.vList.at(mSet.mSet.at(i).src).initVIndex];
+        int mValues_ind = mSet.mSet.at(i).dst * this->numOfInitV + g.vList.at(mSet.mSet.at(i).src).initVIndex;
+        auto &mv = mValues[mValues_ind];
         if (mv > mSet.mSet.at(i).value)
             mv = mSet.mSet.at(i).value;
     }
@@ -351,7 +365,251 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<Verte
     {
         std::cout << "mValues1[" << i << "]:" << mValues1[i] << std::endl;
         //  if (mValues1[i] != (MessageValueType)INVALID_MASSAGE)
-        if (mValues1[i] < (MessageValueType)(INVALID_MASSAGE >> 1))
+        if (mValues1[i] < (MessageValueType)(INVALID_MASSAGE - 1))
+        // accuracy warning
+        {
+            DEBUG_INFO
+            int dst = i / this->numOfInitV;
+            int initV = initVSet[i % this->numOfInitV];
+            mSet.insertMsg(Message<MessageValueType>(initV, dst, mValues1[i]));
+            std::cout << "dst:" << dst << "\tinitV:" << initV << std::endl;
+        }
+    }
+    DEBUG_INFO
+    delete[] mValues1;
+    return mSet.mSet.size();
+}
+template <typename VertexValueType, typename MessageValueType>
+void BellmanFordCL<VertexValueType, MessageValueType>::Buffer_alloc1(Vertex *vSet1, Edge *eSet1,
+                                                                     int numOfInitV,
+                                                                     VertexValueType *vValues1,
+                                                                     MessageValueType *mValues1, int vcount,
+                                                                     int ecount, int flag)
+{
+    std::cout << "vSET:" << std::endl;
+    for (int i = 0; i < vcount; i++)
+    {
+        std::cout << "vset[" << i << "]:" << vSet1[i].initVIndex
+                  << "," << vSet1[i].isActive << "," << vSet1[i].vertexID << std::endl;
+    }
+
+    std::cout << "eSET:" << std::endl;
+    for (int i = 0; i < ecount; i++)
+    {
+        std::cout << "eset[" << i << "]:" << eSet1[i].dst << ","
+                  << eSet1[i].src << "," << eSet1[i].weight << std::endl;
+    }
+    std::cout << "vValues:" << std::endl;
+    for (int i = 0; i < numOfInitV * vcount; i++)
+    {
+        std::cout << "vValues[" << i << "]:" << vValues1[i] << std::endl;
+    }
+    std::cout << "vcount:" << vcount << std::endl;
+    std::cout << "ecount:" << ecount << std::endl;
+    std::cout << "isMidOrNot:" << isMidNot << std::endl;
+    if (flag == 0)
+    {
+        DEBUG_INFO
+        hostVSet = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
+                                  sizeof(Vertex) * vcount, vSet1, &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        hostESet = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
+                                  sizeof(Edge) * ecount, eSet1, &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        hostVValues = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
+                                     sizeof(VertexValueType) * numOfInitV * vcount, vValues1, &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        hostMValues = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
+                                     sizeof(MessageValueType) * numOfInitV * vcount, mValues1, &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        DEBUG_INFO
+
+        std::cout << "\nvSet1: " << vSet << std::endl;
+        DEBUG_INFO
+        vSet = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(Vertex) * vcount, NULL, &errNum);
+        //vSet = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(Vertex) * global_work_size, NULL);
+        Check_Err(errNum, CL_SUCCESS);
+        eSet = clCreateBuffer(gpu_context, CL_MEM_READ_ONLY, sizeof(Edge) * ecount, NULL, &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        vValues = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(VertexValueType) * numOfInitV * vcount, NULL,
+                                 &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        mValues = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(MessageValueType) * numOfInitV * vcount, NULL,
+                                 &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+
+        std::cout << "\nvSet2: " << vSet << std::endl;
+        //
+        DEBUG_INFO
+        errNum = clEnqueueCopyBuffer(comman_queue, hostVSet, vSet, 0, 0,
+                                     sizeof(Vertex) * vcount, 0, NULL, NULL);
+        Check_Err(errNum, CL_SUCCESS);
+        // opencl sizeof == sizeof(cpp class)
+        DEBUG_INFO
+        errNum = clEnqueueCopyBuffer(comman_queue, hostESet, eSet, 0, 0,
+                                     sizeof(Edge) * ecount, 0, NULL, NULL);
+        Check_Err(errNum, CL_SUCCESS);
+        DEBUG_INFO
+        errNum = clEnqueueCopyBuffer(comman_queue, hostVValues, vValues, 0, 0,
+                                     sizeof(VertexValueType) * numOfInitV * vcount, 0, NULL, NULL);
+        Check_Err(errNum, CL_SUCCESS);
+        DEBUG_INFO
+        errNum = clEnqueueCopyBuffer(comman_queue, hostMValues, mValues, 0, 0,
+                                     sizeof(MessageValueType) * numOfInitV * vcount, 0, NULL, NULL);
+        Check_Err(errNum, CL_SUCCESS);
+        DEBUG_INFO
+    }
+    else if (flag == 1)
+    {
+        cl_mem hostMValues_temp = clCreateBuffer(this->gpu_context,
+                                                 CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
+                                                 sizeof(MessageValueType) * numOfInitV * vcount,
+                                                 mValues1, &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        errNum = clEnqueueCopyBuffer(comman_queue, hostMValues_temp, mValues, 0, 0,
+                                     sizeof(MessageValueType) * numOfInitV * vcount, 0, NULL, NULL);
+        Check_Err(errNum, CL_SUCCESS);
+        clReleaseMemObject(hostMValues_temp);
+    }
+}
+
+template <typename VertexValueType, typename MessageValueType>
+int BellmanFordCL<VertexValueType, MessageValueType>::MSGApply1(Graph<VertexValueType> &g, const std::vector<int> &initVSet,
+                                                                std::set<int> &activeVertice,
+                                                                const MessageSet<MessageValueType> &mSet)
+{
+    activeVertice.clear();
+    if (g.vCount <= 0)
+        return 0;
+    auto mValues = new MessageValueType[g.vCount * this->numOfInitV];
+
+    for (int i = 0; i < g.vCount * this->numOfInitV; i++)
+        mValues[i] = (MessageValueType)INVALID_MASSAGE;
+    for (int i = 0; i < mSet.mSet.size(); i++)
+    {
+        int mValues_ind = mSet.mSet.at(i).dst * this->numOfInitV + g.vList.at(mSet.mSet.at(i).src).initVIndex;
+        auto &mv = mValues[mValues_ind];
+        if (mv > mSet.mSet.at(i).value)
+            mv = mSet.mSet.at(i).value;
+    }
+    std::cout << "MSGAPPLY:\n"
+              << std::endl;
+    Buffer_alloc1(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
+                  g.eCount, 1);
+
+    MSGApply_array_kernel = clCreateKernel(program, "MSGApply_array", &errNum);
+    Check_Err(errNum, CL_SUCCESS);
+
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 0, sizeof(cl_mem), &this->vSet);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 1, sizeof(cl_mem), &this->eSet);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 2, sizeof(cl_mem), &this->vValues);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 3, sizeof(cl_mem), &this->mValues);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 4, sizeof(int), &g.vCount);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 5, sizeof(int), &g.eCount);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 6, sizeof(int), &this->numOfInitV);
+    Check_Err(errNum, CL_SUCCESS);
+
+    errNum = clEnqueueNDRangeKernel(comman_queue, MSGApply_array_kernel,
+                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    Check_Err(errNum, CL_SUCCESS);
+    //    //array form computation
+    //     MSGApply_array(g.vCount, g.eCount, &g.vList[0], this->numOfInitV, &initVSet[0], &g.verticesValue[0], mValues);
+    errNum = clEnqueueReadBuffer(comman_queue, this->vValues, CL_FALSE, 0,
+                                 sizeof(VertexValueType) * this->numOfInitV * g.vCount,
+                                 g.verticesValue.data(), 0, NULL, &readDone);
+    Check_Err(errNum, CL_SUCCESS);
+    clWaitForEvents(1, &readDone);
+    errNum = clEnqueueReadBuffer(comman_queue, this->vSet, CL_FALSE, 0,
+                                 sizeof(MessageValueType) * g.vCount,
+                                 g.vList.data(), 0, NULL, &readDone);
+    Check_Err(errNum, CL_SUCCESS);
+    clWaitForEvents(1, &readDone);
+
+    //Active vertices set assembly
+    for (int i = 0; i < g.vCount; i++)
+    {
+        if (g.vList.at(i).isActive)
+            activeVertice.insert(i);
+    }
+
+    delete[] mValues;
+
+    return activeVertice.size();
+}
+
+template <typename VertexValueType, typename MessageValueType>
+int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL1(Graph<VertexValueType> &g,
+                                                                      std::vector<int> &initVSet,
+                                                                      std::set<int> &activeVertice,
+                                                                      MessageSet<MessageValueType> &mSet)
+{
+
+    if (g.vCount <= 0)
+        return 0;
+    MessageValueType *mValues1 = new MessageValueType[g.vCount * this->numOfInitV];
+    DEBUG_INFO
+    std::cout << "MSGGENMERGE_CL:\n"
+              << std::endl;
+    Buffer_alloc1(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues1, g.vCount,
+                  g.eCount, 0);
+    //  void Buffer_alloc(const Vertex *vSet, const Edge *eSet, int numOfInitV, const int *initVSet, const VertexValueType *vValues, MessageValueType *mValues);
+
+    DEBUG_INFO
+    MSGInitial_array_kernel = clCreateKernel(program, "MSGInitial_array", &errNum);
+    MSGGenMerge_array_CL_kernel = clCreateKernel(program, "MSGGenMerge_array_CL", &errNum);
+    Check_Err(errNum, CL_SUCCESS);
+
+    errNum |= clSetKernelArg(MSGInitial_array_kernel, 0, sizeof(cl_mem), &this->vSet);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel, 1, sizeof(cl_mem), &this->eSet);
+    //  errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 2, sizeof(cl_mem), &this->initVSet);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel, 2, sizeof(cl_mem), &this->vValues);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel, 3, sizeof(cl_mem), &this->mValues);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel, 4, sizeof(int), &g.vCount);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel, 5, sizeof(int), &g.eCount);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel, 6, sizeof(int), &this->numOfInitV);
+    Check_Err(errNum, CL_SUCCESS);
+
+    errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 0, sizeof(cl_mem), &this->vSet);
+    errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 1, sizeof(cl_mem), &this->eSet);
+    //  errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 2, sizeof(cl_mem), &this->initVSet);
+    errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 2, sizeof(cl_mem), &this->vValues);
+    errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 3, sizeof(cl_mem), &this->mValues);
+    errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 4, sizeof(int), &g.vCount);
+    errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 5, sizeof(int), &g.eCount);
+    errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 6, sizeof(int), &this->numOfInitV);
+    Check_Err(errNum, CL_SUCCESS);
+
+    DEBUG_INFO
+    errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel, 1,
+                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    Check_Err(errNum, CL_SUCCESS);
+    //MSGGenMerge_array(g.vCount, g.eCount, &g.vList[0], &g.eList[0], this->numOfInitV, &initVSet[0], &g.verticesValue[0], mValues)
+    errNum = clEnqueueNDRangeKernel(comman_queue, MSGGenMerge_array_CL_kernel,
+                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    Check_Err(errNum, CL_SUCCESS);
+    //   clWaitForEvents(1, &readDone);
+
+    /*
+    errNum = clEnqueueReadBuffer(comman_queue, this->mValues, CL_FALSE, 0,
+                                 sizeof(MessageValueType) * numOfInitV * g.vCount,
+                                 &this->hostMValues, 0, NULL, &readDone);
+                                
+   Check_Err(errNum, CL_SUCCESS);
+    clWaitForEvents(1, &readDone);
+*/
+    DEBUG_INFO
+    errNum = clEnqueueReadBuffer(comman_queue, this->mValues, CL_FALSE, 0,
+                                 sizeof(MessageValueType) * this->numOfInitV * g.vCount,
+                                 mValues1, 0, NULL, &readDone);
+    clWaitForEvents(1, &readDone);
+    DEBUG_INFO
+    Check_Err(errNum, CL_SUCCESS);
+
+    for (int i = 0; i < g.vCount * this->numOfInitV; i++)
+    {
+        std::cout << "mValues1[" << i << "]:" << mValues1[i] << std::endl;
+        //  if (mValues1[i] != (MessageValueType)INVALID_MASSAGE)
+        if (mValues1[i] < (MessageValueType)(INVALID_MASSAGE - 1))
         // accuracy warning
         {
             DEBUG_INFO
@@ -383,10 +641,13 @@ void BellmanFordCL<VertexValueType, MessageValueType>::Free()
     // clReleaseMemObject(initVSet);
     clReleaseMemObject(vValues);
 */
-
+    errNum |= clReleaseEvent(readDone);
+    // errNum |= clReleaseEvent(copyDone);
     errNum |= clReleaseKernel(MSGApply_array_kernel);
 
     errNum |= clReleaseKernel(MSGGenMerge_array_CL_kernel);
+
+    errNum != clReleaseKernel(MSGInitial_array_kernel);
 
     errNum |= clReleaseCommandQueue(comman_queue);
 
@@ -444,6 +705,7 @@ void BellmanFordCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexVal
     int iterCount = 0;
     while (activeVertices.size() > 0)
     {
+        std::cout << "\nactiveVertices.size:" << activeVertices.size() << std::endl;
         //Test
         std::cout << ++iterCount << ":" << clock() << std::endl;
         //Test end
@@ -473,15 +735,16 @@ void BellmanFordCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexVal
             DEBUG_INFO
             std::cout << "\n\ni :" << i << "\n\n"
                       << std::endl;
-            MSGGenMerge_CL(g, initVSet, activeVertices, mMergedSet);
+            //  MSGGenMerge_CL(g, initVSet, activeVertices, mMergedSet);
+            MSGGenMerge_CL1(g, initVSet, activeVertices, mMergedSet);
             DEBUG_INFO
             //Test
             std::cout << "MGenMerge:" << clock() << std::endl;
             //Test end
             activeVertices.clear();
-            Free_little(true);
-            MSGApply(g, initVSet, activeVertices, mMergedSet);
-
+            //   Free_little(true);
+            // MSGApply(g, initVSet, activeVertices, mMergedSet);
+            MSGApply1(g, initVSet, activeVertices, mMergedSet);
             //Test
             std::cout << "Apply:" << clock() << std::endl;
             //Test end
@@ -508,6 +771,8 @@ void checkErrorFileLine(int errNum, int expected, const char *file, const int li
     if (errNum != expected)
     {
         std::cout << "\nCheck Error:" << std::endl;
+        // std::cerr << "Line : " << lineNumber << " in File_ " << file << std::endl;
+        std::cout << "Line : " << lineNumber << " in File_ " << file << std::endl;
         std::cerr << "Line : " << lineNumber << " in File_ " << file << std::endl;
         exit(1);
     }

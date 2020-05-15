@@ -1,4 +1,4 @@
-#include "BellmanFordCl.cpp"
+#include "BellmanFordCL.cpp"
 
 
 template class BellmanFordCL<double,double>;

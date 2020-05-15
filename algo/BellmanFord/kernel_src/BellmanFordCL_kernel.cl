@@ -49,7 +49,7 @@ __kernel void MSGApply_array(__global Vertex *vSet, __global Edge *eSet,
       }
     }
   }
-//  printf("acCount:%d\n", avCount);
+  //  printf("acCount:%d\n", avCount);
 }
 
 __kernel void MSGGenMerge_array_CL(__global Vertex *vSet, __global Edge *eSet,
@@ -68,5 +68,49 @@ __kernel void MSGGenMerge_array_CL(__global Vertex *vSet, __global Edge *eSet,
               vValues[eSet[i].src * numOfInitV + j] + eSet[i].weight;
       }
     }
+  }
+}
+
+__kernel void MSGApply_array1(__global Vertex *vSet, __global Edge *eSet,
+                              __global double *vValues,
+                              __global double *mValues, int vCount, int eCount,
+                              int numOfInitV) {
+  int tid = get_global_id(0);
+  if ((tid >= 0) && (tid < vCount * numOfInitV)) {
+    if (vValues[tid] > mValues[tid]) {
+      vValues[tid] = mValues[tid];
+      if (!vSet[tid / numOfInitV].isActive) {
+        vSet[tid / numOfInitV].isActive = true;
+      }
+    }
+  }
+}
+
+__kernel void MSGGenMerge_array_CL1(__global Vertex *vSet, __global Edge *eSet,
+                                    __global double *vValues,
+                                    __global double *mValues, int vCount,
+                                    int eCount, int numOfInitV) {
+  int tid = get_global_id(0);
+  if ((tid >= 0) && (tid < eCount)) {
+    if (vSet[eSet[tid].src].isActive) {
+      for (int j = 0; j < numOfInitV; j++) {
+        if (mValues[eSet[tid].dst * numOfInitV + j] >
+            vValues[eSet[tid].src * numOfInitV + j] + eSet[tid].weight)
+          mValues[eSet[tid].dst * numOfInitV + j] =
+              vValues[eSet[tid].src * numOfInitV + j] + eSet[tid].weight;
+      }
+    }
+  }
+}
+
+__kernel void MSGInitial_array(__global Vertex *vSet, __global Edge *eSet,
+                               __global double *vValues,
+                               __global double *mValues, int vCount, int eCount,
+                               int numOfInitV) {
+  int tid = get_global_id(0);
+  if ((tid >= 0) && (tid < vCount)) {
+    vSet[i].isActive = false;
+    for (int j = 0; j < numOfInitV; j++)
+      mValues[tid * numOfInitV + j] = INT_MAX32;
   }
 }
