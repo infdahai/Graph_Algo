@@ -25,7 +25,7 @@ target_link_libraries(algo_BellmanFordTest
         
 #//////////////////
 
-set(OpenCL_INCLUDE_DIR "/usr/local/cuda-10.0/include/CL")
+set(OpenCL_INCLUDE_DIR "/usr/local/cuda-10.0/include")
 set(OpenCL_LIBRARY "/usr/local/cuda-10.0/lib64/libOpenCL.so")
 include_directories(${OpenCL_INCLUDE_DIR})
 #link_directories(${OpenCL_LIBRARY})

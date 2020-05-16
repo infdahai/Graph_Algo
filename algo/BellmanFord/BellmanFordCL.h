@@ -24,9 +24,8 @@
 
 #endif
 
-template <typename VertexValueType, typename MessageValueType>
-class BellmanFordCL : public BellmanFord<VertexValueType, MessageValueType>
-{
+template<typename VertexValueType, typename MessageValueType>
+class BellmanFordCL : public BellmanFord<VertexValueType, MessageValueType> {
 public:
     BellmanFordCL();
 
@@ -39,13 +38,10 @@ public:
 
     void Free() override;
 
-    int MSGApply(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice,
-                 const MessageSet<MessageValueType> &mSet) override;
     int MSGApply1(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice,
                   const MessageSet<MessageValueType> &mSet);
-    int
-    MSGGenMerge_CL(Graph<VertexValueType> &g, std::vector<int> &initVSet, std::set<int> &activeVertice,
-                   MessageSet<MessageValueType> &mSet);
+
+
     int
     MSGGenMerge_CL1(Graph<VertexValueType> &g, std::vector<int> &initVSet, std::set<int> &activeVertice,
                     MessageSet<MessageValueType> &mSet);
@@ -56,14 +52,14 @@ public:
     //  cl_device_id getMaxFlopsDev(cl_context);
     void loadAndBuildProgram(cl_context, const char *);
 
-    void ApplyD_CL(Graph<VertexValueType> &g, std::vector<int> &initVList, int partitionCount);
+    void ApplyStep(Graph<VertexValueType> &g, std::vector<int> &initVSet, std::set<int> &activeVertices);
 
-    void Buffer_alloc(Vertex *vSet, Edge *eSet, int numOfInitV, VertexValueType *vValues,
-                      MessageValueType *mValues, int vcount, int ecount, bool flag);
+    void ApplyD_CL(Graph<VertexValueType> &g, std::vector<int> &initVList, int partitionCount);
 
     void Buffer_alloc1(Vertex *vSet, Edge *eSet, int numOfInitV, VertexValueType *vValues,
                        MessageValueType *mValues, int vcount, int ecount, int flag);
-    void Free_little(bool);
+
+    void Free_little();
 
 protected:
     int vertexLimit;
@@ -85,16 +81,15 @@ protected:
     //   cl_int avCount;
     cl_kernel MSGApply_array_kernel;
     cl_kernel MSGGenMerge_array_CL_kernel;
-    cl_kernel MSGInitial_array_kernel;
+    cl_kernel MSGInitial_array_kernel_1;
+    cl_kernel MSGInitial_array_kernel_2;
 
-    typedef struct CL_device
-    {
+    typedef struct CL_device {
         cl_context context;
         cl_device_id device;
         int numResults;
 
-        CL_device()
-        {
+        CL_device() {
             context = 0;
             device = 0;
             numResults = 0;
@@ -116,7 +111,7 @@ protected:
     cl_kernel kernel;
     cl_int errNum;
     cl_event readDone;
-  //  cl_event copyDone;
+    //  cl_event copyDone;
     size_t local_work_size;
     size_t global_work_size;
     // int numOfInitV;
@@ -131,15 +126,15 @@ private:
 };
 
 void displayPlatformInfo(
-    cl_platform_id id,
-    cl_platform_info name,
-    std::string str);
+        cl_platform_id id,
+        cl_platform_info name,
+        std::string str);
 
-template <typename T>
+template<typename T>
 void displayDeviceInfo(
-    cl_device_id id,
-    cl_device_info name,
-    std::string str);
+        cl_device_id id,
+        cl_device_info name,
+        std::string str);
 
 void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber);
 
