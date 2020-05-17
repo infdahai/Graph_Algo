@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     int numOfInitV = atoi(argv[3]);
     int nodeNo = (argc == 4) ? 0 : atoi(argv[4]);
 
-    auto testUtilServer = UtilServer<LabelPropagation<std::pair<int, int>, std::pair<int, int>>, std::pair<int, int>, std::pair<int, int>>(vCount, eCount, numOfInitV, nodeNo);
+    auto testUtilServer = UtilServer<LabelPropagation<LPA_Value, LPA_MSG>, LPA_Value, LPA_MSG>(vCount, eCount, numOfInitV, nodeNo);
     if(!testUtilServer.isLegal)
     {
         std::cout << "mem allocation failed or parameters are illegal" << std::endl;

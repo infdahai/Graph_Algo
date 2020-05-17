@@ -6,7 +6,7 @@
 
 #include <iostream>
 #include <fstream>
-
+#include <algorithm>
 int main()
 {
     //Read the Graph
@@ -18,19 +18,19 @@ int main()
 
     std::vector<int> initVList = std::vector<int>();
 
-    Graph<std::pair<int, int>> test = Graph<std::pair<int, int>>(vCount);
+    Graph<LPA_Value> test = Graph<LPA_Value>(vCount);
     for(int i = 0; i < eCount; i++)
     {
         int src, dst;
         double weight;
 
         Gin >> src >> dst >> weight;
-        test.insertEdge(src, dst, weight);
+        test.insertEdgeUpdateInfo(src, dst, weight, i);
     }
 
     Gin.close();
 
-    auto executor = LabelPropagation<std::pair<int, int>, std::pair<int, int>>();
-    executor.ApplyD(test, initVList, 4);
+    auto executor = LabelPropagation<LPA_Value, LPA_MSG>();
+    executor.ApplyD(test, initVList, 1);
 }
 

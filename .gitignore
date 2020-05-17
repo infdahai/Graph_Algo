@@ -5,5 +5,5 @@ data/
 .idea
 .DS_Store
 *~
-*.txt
+testGraph*
 .history/

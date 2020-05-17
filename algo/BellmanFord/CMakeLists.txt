@@ -15,7 +15,7 @@ target_link_libraries(algo_BellmanFord
         core_GraphUtil
         core_MessageSet)
 
-if (CUDA_FOUND)
+if(CUDA_FOUND)
     CUDA_SELECT_NVCC_ARCH_FLAGS(ARCH_FLAGS Auto)
     set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS}; ${ARCH_FLAGS}; -std=c++14;)
 
@@ -32,7 +32,7 @@ if (CUDA_FOUND)
             algo_BellmanFord
             algo_BellmanFordGPU_kernel)
 
-endif (CUDA_FOUND)
+endif(CUDA_FOUND)
 
 
 set(OpenCL_FOUND TRUE)

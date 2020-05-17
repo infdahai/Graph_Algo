@@ -21,26 +21,7 @@ target_link_libraries(algo_BellmanFordTest
         core_Graph
         core_MessageSet
         core_GraphUtil)
-                
-        
-#//////////////////
-
-set(OpenCL_INCLUDE_DIR "/usr/local/cuda-10.0/include")
-set(OpenCL_LIBRARY "/usr/local/cuda-10.0/lib64/libOpenCL.so")
-include_directories(${OpenCL_INCLUDE_DIR})
-#link_directories(${OpenCL_LIBRARY})
-add_executable(algo_BellmanFordCLTest
-        BellmanFordCL_Test.cpp)
-
-target_link_libraries(algo_BellmanFordCLTest
-        algo_BellmanFordCL
-        core_Graph
-        core_MessageSet
-        core_GraphUtil)
-
-#//////////////////
-
-
+		
 add_executable(algo_LabelPropagationTest
 		LabelPropagationTest.cpp)
 
@@ -59,6 +40,15 @@ target_link_libraries(algo_ConnectedComponentTest
         core_MessageSet
         core_GraphUtil)
 
+add_executable(algo_DDFSTest
+        DDFSTest.cpp)
+
+target_link_libraries(algo_DDFSTest
+        algo_DDFS
+        core_Graph
+        core_MessageSet
+        core_GraphUtil)
+
 add_executable(core_GraphAccessTest
         GraphAccessTest.cpp)
 
@@ -67,7 +57,18 @@ target_link_libraries(core_GraphAccessTest
         core_MessageSet
         core_GraphUtil)
 
+add_executable(algo_PageRankTest
+        PageRankTest.cpp)
+
+target_link_libraries(algo_PageRankTest
+        algo_PageRank
+        core_Graph
+        core_MessageSet
+        core_GraphUtil)
+
 if(CUDA_FOUND)
+    include_directories("${CUDA_INCLUDE_DIRS}")
+
     add_executable(algo_BellmanFordGPUTest
             BellmanFordGPUTest.cpp)
 
@@ -76,7 +77,68 @@ if(CUDA_FOUND)
             core_Graph
             core_MessageSet
             core_GraphUtil)
+
+    add_executable(algo_PageRankGPUTest
+            PageRankGPUTest.cpp)
+
+    target_link_libraries(algo_PageRankGPUTest
+            algo_PageRankGPU
+            core_Graph
+            core_MessageSet
+            core_GraphUtil)
+        
+    add_executable(algo_LabelPropagationGPUTest
+            LabelPropagationGPUTest.cpp)
+
+    target_link_libraries(algo_LabelPropagationGPUTest
+            algo_LabelPropagationGPU
+            core_Graph
+            core_MessageSet
+            core_GraphUtil)
+
+    add_executable(algo_ConnectedComponentGPUTest
+            ConnectedComponentGPUTest.cpp)
+
+    target_link_libraries(algo_ConnectedComponentGPUTest
+            algo_ConnectedComponentGPU
+            core_Graph
+            core_MessageSet
+            core_GraphUtil)
 endif(CUDA_FOUND)
+
+
+set(OpenCL_FOUND TRUE)
+if (OpenCL_FOUND)
+        set(OpenCL_INCLUDE_DIR "/usr/local/cuda-10.0/include")
+        set(OpenCL_LIBRARY "/usr/local/cuda-10.0/lib64/libOpenCL.so")
+        include_directories(${OpenCL_INCLUDE_DIR})
+        add_executable(algo_BellmanFordCLTest
+                BellmanFordCL_Test.cpp)
+        target_link_libraries(algo_BellmanFordCLTest
+                algo_BellmanFordCL
+                core_Graph
+                core_MessageSet
+                core_GraphUtil)
+
+        add_executable(algo_ConnectedComponentCLTest
+                ConnectedComponentCL_Test.cpp)
+        target_link_libraries(algo_ConnectedComponentCLTest
+                algo_ConnectedComponentCL
+                core_Graph
+                core_MessageSet
+                core_GraphUtil)
+
+        add_executable(algo_LabelPropagationCLTest
+		LabelPropagationCL_Test.cpp)
+
+        target_link_libraries(algo_LabelPropagationCLTest
+                algo_LabelPropagationCL
+                core_Graph
+                core_MessageSet
+                core_GraphUtil)
+endif (OpenCL_FOUND)
+
+
 
 if(UNIX)
     add_executable(srv_Test_srv
@@ -106,9 +168,51 @@ if(UNIX)
                 srv_UNIX_msg
                 srv_UtilServer
                 algo_BellmanFord
-                algo_LabelPropagation
                 algo_BellmanFordGPU)
+
+        add_executable(srv_UtilServerTest_PageRankGPU
+                UtilServerTest_PageRankGPU.cpp)
+
+        target_link_libraries(srv_UtilServerTest_PageRankGPU
+                srv_UNIX_shm
+                srv_UNIX_msg
+                srv_UtilServer
+                algo_PageRank
+                algo_PageRankGPU)
+
+        add_executable(srv_UtilServerTest_LabelPropagationGPU
+                UtilServerTest_LabelPropagationGPU.cpp)
+
+        target_link_libraries(srv_UtilServerTest_LabelPropagationGPU
+                srv_UNIX_shm
+                srv_UNIX_msg
+                srv_UtilServer
+                algo_LabelPropagation
+                algo_LabelPropagationGPU)
+
+        add_executable(srv_UtilServerTest_ConnectedComponentGPU
+                UtilServerTest_ConnectedComponentGPU.cpp)
+
+        target_link_libraries(srv_UtilServerTest_ConnectedComponentGPU
+                srv_UNIX_shm
+                srv_UNIX_msg
+                srv_UtilServer
+                algo_ConnectedComponent
+                algo_ConnectedComponentGPU)
     ENDIF(CUDA_FOUND)
+
+    set(OpenCL_FOUND TRUE)
+    if(OpenCL_FOUND)
+        add_executable(srv_UtilServerTest_BellmanFordCL
+        UtilServerTest_BellmanFordCL.cpp)
+
+        target_link_libraries(srv_UtilServerTest_BellmanFordCL
+                srv_UNIX_shm
+                srv_UNIX_msg
+                srv_UtilServer
+                algo_BellmanFord
+                algo_BellmanFordCL)
+    endif(OpenCL_FOUD)
 
     add_executable(srv_UtilServerTest_BellmanFord
             UtilServerTest_BellmanFord.cpp)
@@ -117,8 +221,7 @@ if(UNIX)
             srv_UNIX_shm
             srv_UNIX_msg
             srv_UtilServer
-            algo_BellmanFord
-            algo_LabelPropagation)
+            algo_BellmanFord)
 
     add_executable(srv_UtilServerTest_LabelPropagation
             UtilServerTest_LabelPropagation.cpp)
@@ -127,8 +230,34 @@ if(UNIX)
             srv_UNIX_shm
             srv_UNIX_msg
             srv_UtilServer
-            algo_BellmanFord
             algo_LabelPropagation)
+
+    add_executable(srv_UtilServerTest_PageRank
+            UtilServerTest_PageRank.cpp)
+
+    target_link_libraries(srv_UtilServerTest_PageRank
+            srv_UNIX_shm
+            srv_UNIX_msg
+            srv_UtilServer
+            algo_PageRank)
+
+    add_executable(srv_UtilServerTest_ConnectedComponent
+            UtilServerTest_ConnectedComponent.cpp)
+
+    target_link_libraries(srv_UtilServerTest_ConnectedComponent
+            srv_UNIX_shm
+            srv_UNIX_msg
+            srv_UtilServer
+            algo_ConnectedComponent)
+
+    add_executable(srv_UtilServerTest_JumpIteration
+            UtilServerTest_JumpIteration.cpp)
+
+    target_link_libraries(srv_UtilServerTest_JumpIteration
+            srv_UNIX_shm
+            srv_UNIX_msg
+            srv_UtilServer
+            algo_JumpIteration)
 
     add_executable(srv_UtilClientTest
             UtilClientTest.cpp)
@@ -137,5 +266,78 @@ if(UNIX)
             pthread
             srv_UNIX_shm
             srv_UNIX_msg
-            srv_UtilClient)
+            srv_UtilClient
+            algo_BellmanFord)
+
+    add_executable(srv_UtilClientTest_BFOptimize
+            UtilClientTest_BFOptimize.cpp)
+
+    target_link_libraries(srv_UtilClientTest_BFOptimize
+            pthread
+            srv_UNIX_shm
+            srv_UNIX_msg
+            srv_UtilClient
+            algo_BellmanFord)
+
+    add_executable(srv_UtilClientTest_BFOptimizePartition
+            UtilClientTest_BFOptimizePartition.cpp)
+
+    target_link_libraries(srv_UtilClientTest_BFOptimizePartition
+            pthread
+            srv_UNIX_shm
+            srv_UNIX_msg
+            srv_UtilClient
+            algo_BellmanFord)
+
+    add_executable(srv_UtilClientTest_BFJ
+            UtilClientTest_BFJump.cpp)
+
+    target_link_libraries(srv_UtilClientTest_BFJ
+            pthread
+            srv_UNIX_shm
+            srv_UNIX_msg
+            srv_UtilClient
+            algo_BellmanFord)
+
+    add_executable(srv_UtilClientTest_LabelPropagation
+            UtilClientTest_LabelPropagation.cpp)
+
+    target_link_libraries(srv_UtilClientTest_LabelPropagation
+            pthread
+            srv_UNIX_shm
+            srv_UNIX_msg
+            srv_UtilClient
+            algo_LabelPropagation)
+
+    add_executable(srv_UtilClientTest_LabelPropagationPartition
+            UtilClientTest_LabelPropagationPartition.cpp)
+
+    target_link_libraries(srv_UtilClientTest_LabelPropagationPartition
+            pthread
+            srv_UNIX_shm
+            srv_UNIX_msg
+            srv_UtilClient
+            algo_LabelPropagation)
+
+    add_executable(srv_UtilClientTest_PageRank
+            UtilClientTest_PageRank.cpp)
+
+    target_link_libraries(srv_UtilClientTest_PageRank
+            pthread
+            srv_UNIX_shm
+            srv_UNIX_msg
+            srv_UtilClient
+            algo_PageRank)
+
+    add_executable(srv_UtilClientTest_JumpIteration
+            UtilClientTest_JumpIteration.cpp)
+
+    target_link_libraries(srv_UtilClientTest_JumpIteration
+            pthread
+            srv_UNIX_shm
+            srv_UNIX_msg
+            srv_UtilClient
+            algo_JumpIteration)
+
+        
 ENDIF(UNIX)

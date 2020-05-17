@@ -172,26 +172,6 @@ void BellmanFordCL<VertexValueType, MessageValueType>::Buffer_alloc1(Vertex *vSe
                                                                      MessageValueType *mValues1, int vcount,
                                                                      int ecount, int flag)
 {
-    std::cout << "vSET:" << std::endl;
-    std::cout << "vcount:" << vcount << std::endl;
-    std::cout << "ecount:" << ecount << std::endl;
-    for (int i = 0; i < vcount; i++)
-    {
-        std::cout << "vset[" << i << "]:" << vSet1[i].initVIndex
-                  << "," << vSet1[i].isActive << "," << vSet1[i].vertexID << std::endl;
-    }
-
-    std::cout << "eSET:" << std::endl;
-    for (int i = 0; i < ecount; i++)
-    {
-        std::cout << "eset[" << i << "]:" << eSet1[i].src << ","
-                  << eSet1[i].dst << "," << eSet1[i].weight << std::endl;
-    }
-    std::cout << "vValues:" << std::endl;
-    for (int i = 0; i < numOfInitV * vcount; i++)
-    {
-        std::cout << "vValues[" << i << "]:" << vValues1[i] << std::endl;
-    }
     if (flag == 0)
     {
         hostVSet = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
@@ -288,13 +268,6 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGApply1(Graph<VertexValu
     errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_2,
                                     1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
     Check_Err(errNum, CL_SUCCESS);
-    /*
-    errNum = clEnqueueReadBuffer(comman_queue, this->vSet, CL_FALSE, 0,
-                                 sizeof(Vertex) * g.vCount,
-                                 g.vList.data(), 0,NULL, &readDone);
-                                 */
-    Check_Err(errNum, CL_SUCCESS);
-    clWaitForEvents(1, &readDone);
 
     MSGApply_array_kernel = clCreateKernel(program, "MSGApply_array1", &errNum);
     Check_Err(errNum, CL_SUCCESS);
@@ -335,11 +308,6 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGApply1(Graph<VertexValu
 }
 
 template <typename VertexValueType, typename MessageValueType>
-void BellmanFordCL<VertexValueType, MessageValueType>::MSGInitial_array_1(Graph<VertexValueType> &g)
-{
-}
-
-template <typename VertexValueType, typename MessageValueType>
 int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL1(Graph<VertexValueType> &g,
                                                                       std::vector<int> &initVSet,
                                                                       std::set<int> &activeVertice,
@@ -366,6 +334,7 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL1(Graph<Vert
     errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_1,
                                     1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
     Check_Err(errNum, CL_SUCCESS);
+    /*
     errNum = clEnqueueReadBuffer(comman_queue, this->mValues, CL_FALSE, 0,
                                  sizeof(MessageValueType) * this->numOfInitV * g.vCount,
                                  mValues1, 0, NULL, &readDone);
@@ -374,6 +343,7 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL1(Graph<Vert
 
     Buffer_alloc1(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues1, g.vCount,
                   g.eCount, 1);
+                  */
 
     MSGGenMerge_array_CL_kernel = clCreateKernel(program, "MSGGenMerge_array_CL1", &errNum);
     Check_Err(errNum, CL_SUCCESS);
@@ -399,7 +369,7 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL1(Graph<Vert
 
     for (int i = 0; i < g.vCount * this->numOfInitV; i++)
     {
-        std::cout << "mValues1[" << i << "]:" << mValues1[i] << std::endl;
+        //    std::cout << "mValues1[" << i << "]:" << mValues1[i] << std::endl;
         //   if (mValues1[i] != (MessageValueType)INVALID_MASSAGE)
         if (mValues1[i] < (MessageValueType)(INVALID_DOUBLE_NUMBER - 1))
         // accuracy warning
@@ -433,6 +403,8 @@ void BellmanFordCL<VertexValueType, MessageValueType>::Free()
     errNum |= clReleaseCommandQueue(comman_queue);
 
     errNum |= clReleaseProgram(program);
+
+    errNum |= clReleaseContext(gpu_context);
     Check_Err(errNum, CL_SUCCESS);
 }
 

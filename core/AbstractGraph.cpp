@@ -9,6 +9,19 @@ Vertex::Vertex(int vertexID, bool activeness, int initVIndex)
     this->vertexID = vertexID;
     this->isActive = activeness;
     this->initVIndex = initVIndex;
+    this->outDegree = 0;
+    this->inDegree = 0;
+    this->isMaster = false;
+}
+
+Vertex::Vertex()
+{
+    this->vertexID = -1;
+    this->isActive = false;
+    this->isMaster = false;
+    this->initVIndex = INVALID_INITV_INDEX;
+    this->outDegree = 0;
+    this->inDegree = 0;
 }
 
 Edge::Edge(int src, int dst, double weight)
@@ -16,6 +29,11 @@ Edge::Edge(int src, int dst, double weight)
     this->src = src;
     this->dst = dst;
     this->weight = weight;
+}
+
+Edge::Edge()
+{
+
 }
 
 AbstractGraph::AbstractGraph(int vCount)
@@ -53,7 +71,11 @@ AbstractGraph::AbstractGraph(int vCount, int eCount, int *eSrcSet, int *eDstSet,
 
     //e assemble
     for(int i = 0; i < this->eCount; i++)
+    {
         this->eList.emplace_back(eSrcSet[i], eDstSet[i], eWeightSet[i]);
+        this->vList.at(eSrcSet[i]).outDegree += 1;
+        this->vList.at(eDstSet[i]).inDegree += 1;
+    }
 }
 
 void AbstractGraph::insertEdge(int src, int dst, double weight)
@@ -61,3 +83,13 @@ void AbstractGraph::insertEdge(int src, int dst, double weight)
     this->eList.emplace_back(src, dst, weight);
     this->eCount++;
 }
+
+void AbstractGraph::insertEdgeUpdateInfo(int src, int dst, double weight, int originIndex)
+{
+    insertEdge(src, dst, weight);
+    this->vList.at(src).outDegree += 1;
+    this->vList.at(dst).inDegree += 1;
+    this->eList.at(originIndex).originIndex = originIndex;
+}
+
+

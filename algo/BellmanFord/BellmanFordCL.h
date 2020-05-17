@@ -41,8 +41,6 @@ public:
     int MSGApply1(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice,
                   const MessageSet<MessageValueType> &mSet);
 
-    void MSGInitial_array_1(Graph<VertexValueType> &g);
-
     int
     MSGGenMerge_CL1(Graph<VertexValueType> &g, std::vector<int> &initVSet, std::set<int> &activeVertice,
                     MessageSet<MessageValueType> &mSet);

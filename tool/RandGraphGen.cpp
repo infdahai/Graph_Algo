@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     for(int i = 0; i < eCount; i++)
     {
         int src = uniform_dist_1(e1), dst;
-        double weight = uniform_dist_2(e2);
+        double weight = 1;
         do
         {
             dst = uniform_dist_1(e1);

@@ -9,6 +9,46 @@
 
 #include "../../core/GraphUtil.h"
 
+class LPA_Value
+{
+public:
+    LPA_Value():LPA_Value(INVALID_INITV_INDEX, -1, -1)
+    {
+
+    }
+
+    LPA_Value(int destVId, int label, int labelCnt)
+    {
+        this->destVId = destVId;
+        this->label = label;
+        this->labelCnt = labelCnt;
+    }
+
+    int destVId;
+    int label;
+    int labelCnt;
+};
+
+class LPA_MSG
+{
+public:
+    LPA_MSG():LPA_MSG(-1, -1, -1)
+    {
+
+    }
+
+    LPA_MSG(int destVId, int edgeOriginIndex, int label)
+    {
+        this->destVId = destVId;
+        this->edgeOriginIndex = edgeOriginIndex;
+        this->label = label;
+    }
+
+    int destVId;
+    int edgeOriginIndex;
+    int label;
+};
+
 template <typename VertexValueType, typename MessageValueType>
 class LabelPropagation : public GraphUtil<VertexValueType, MessageValueType>
 {
@@ -31,10 +71,22 @@ public:
     void Deploy(int vCount, int eCount, int numOfInitV) override;
     void Free() override;
 
+    std::vector<Graph<VertexValueType>> DivideGraphByEdge(const Graph<VertexValueType> &g, int partitionCount);
+
     void ApplyStep(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertices);
     void Apply(Graph<VertexValueType> &g, const std::vector<int> &initVList);
 
     void ApplyD(Graph<VertexValueType> &g, const std::vector<int> &initVList, int partitionCount);
+
+    void InitGraph_array(VertexValueType *vValues, Vertex *vSet, Edge *eSet, int vCount);
+
+protected:
+    int *offsetInMValuesOfEachV;
+
+    static bool labelPropagationEdgeCmp(Edge &e1, Edge &e2)
+    {
+        return e1.dst < e2.dst;
+    }
 };
 
 #endif

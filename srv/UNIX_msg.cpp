@@ -4,6 +4,7 @@
 
 #include "UNIX_msg.h"
 #include <cstring>
+#include <cstdio>
 
 UNIX_msg::UNIX_msg()
 {

@@ -15,23 +15,35 @@ if(UNIX)
             UNIX_msg.cpp)
 
     if(CUDA_FOUND)
+        include_directories("${CUDA_INCLUDE_DIRS}")
+
         add_library(srv_UtilServer
                 UtilServer.h
                 UtilServer.cpp
                 impl/UtilServer_impl.cpp
                 impl/UtilServer_implGPU.cpp)
+
+        target_link_libraries(srv_UtilServer
+                srv_UNIX_msg
+                srv_UNIX_shm
+                core_Graph
+                core_GraphUtil
+                algo_PageRankGPU_kernel
+                algo_ConnectedComponentGPU_kernel
+                algo_BellmanFordGPU_kernel
+                algo_LabelPropagationGPU_kernel)
     else()
         add_library(srv_UtilServer
                 UtilServer.h
                 UtilServer.cpp
                 impl/UtilServer_impl.cpp)
-    endif(CUDA_FOUND)
 
-    target_link_libraries(srv_UtilServer
-            srv_UNIX_msg
-            srv_UNIX_shm
-            core_Graph
-            core_GraphUtil)
+        target_link_libraries(srv_UtilServer
+                srv_UNIX_msg
+                srv_UNIX_shm
+                core_Graph
+                core_GraphUtil)
+    endif(CUDA_FOUND)
 
     add_library(srv_UtilClient
             UtilClient.h

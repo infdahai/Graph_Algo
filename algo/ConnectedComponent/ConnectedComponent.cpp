@@ -13,6 +13,13 @@ ConnectedComponent<VertexValueType, MessageValueType>::ConnectedComponent()
 
 }
 
+template <typename VertexValueType, typename MessageValueType>
+void ConnectedComponent<VertexValueType, MessageValueType>::InitGraph_array(VertexValueType *vValues, Vertex *vSet, Edge *eSet, int vCount)
+{
+
+}
+
+
 template<typename VertexValueType, typename MessageValueType>
 int ConnectedComponent<VertexValueType, MessageValueType>::MSGApply(Graph<VertexValueType> &g, const std::vector<int> &initVSet,
                                                    std::set<int> &activeVertice,
@@ -100,6 +107,12 @@ ConnectedComponent<VertexValueType, MessageValueType>::MSGGenMerge_array(int vCo
         {
             if(mValues[eSet[i].dst] > vValues[eSet[i].src])
                 mValues[eSet[i].dst] = vValues[eSet[i].src];
+        }
+
+        if(vSet[eSet[i].dst].isActive)
+        {
+            if(mValues[eSet[i].src] > vValues[eSet[i].dst])
+                mValues[eSet[i].src] = vValues[eSet[i].dst];
         }
     }
 

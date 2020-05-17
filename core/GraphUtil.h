@@ -43,9 +43,13 @@ public:
     Graph<VertexValueType> reflectG(const Graph<VertexValueType> &o_g, const std::vector<Edge> &eSet, std::vector<int> &reflectIndex, std::vector<int> &reversedIndex);
     MessageSet<MessageValueType> reflectM(const MessageSet<MessageValueType> &o_mSet, int vCount, std::vector<int> &reflectIndex, std::vector<int> &reversedIndex);
 
+    virtual void InitGraph_array(VertexValueType *vValues, Vertex *vSet, Edge *eSet, int vCount) = 0;
+
     //This two parameter is used to initialize memory blocks the program will use
     int totalVValuesCount;
     int totalMValuesCount;
+    int partitionId;
+    bool optimize = false;
 };
 
 #endif //GRAPH_ALGO_GRAPHUTIL_H

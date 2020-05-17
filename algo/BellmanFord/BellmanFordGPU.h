@@ -35,8 +35,6 @@ protected:
     VertexValueType *vValueSet;
     double *d_vValueSet;
 
-    MessageValueType *mValueTable;
-
     int *mInitVIndexSet;
     int *d_mInitVIndexSet;
     int *mDstSet;
@@ -47,13 +45,22 @@ protected:
     Vertex *d_vSet;
     Edge *d_eGSet;
 
-    MessageValueType *mMergedMSGValueSet;
     unsigned long long int *mTransformedMergedMSGValueSet;
     unsigned long long int *d_mTransformedMergedMSGValueSet;
 
 private:
+    //optimize
+    //skip the unnecessary copy between host and device -- after the first iteration
+    int isInited;
+    bool *isDst;
+    int *avSet;
+    int avCount;
+    MessageValueType *mValueSetOpt;
+    //optimize --end
+
     auto MSGGenMerge_GPU_MVCopy(Vertex *d_vSet, const Vertex *vSet,
                                 double *d_vValues, const double *vValues,
+                                int eGCount, const Edge *eSet,
                                 unsigned long long int *d_mTransformedMergedMSGValueSet,
                                 unsigned long long int *mTransformedMergedMSGValueSet,
                                 int vGCount, int numOfInitV);

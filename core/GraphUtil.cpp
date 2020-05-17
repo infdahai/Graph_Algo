@@ -3,6 +3,7 @@
 //
 
 #include "GraphUtil.h"
+#include <iostream>
 
 template <typename VertexValueType, typename MessageValueType>
 std::vector<Graph<VertexValueType>> GraphUtil<VertexValueType, MessageValueType>::DivideGraphByEdge(const Graph<VertexValueType> &g, int partitionCount)

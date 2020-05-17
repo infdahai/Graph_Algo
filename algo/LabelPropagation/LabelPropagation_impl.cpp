@@ -4,4 +4,4 @@
 
 #include "LabelPropagation.cpp"
 
-template class LabelPropagation<std::pair<int, int>, std::pair<int, int>>;
+template class LabelPropagation<LPA_Value, LPA_MSG>;

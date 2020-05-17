@@ -33,3 +33,27 @@ if(CUDA_FOUND)
             algo_ConnectedComponentGPU_kernel)
 
 endif(CUDA_FOUND)
+
+
+set(OpenCL_FOUND TRUE)
+
+if (OpenCL_FOUND)
+
+    set(OpenCL_INCLUDE_DIR "/usr/local/cuda-10.0/include")
+    set(OpenCL_LIBRARY "/usr/local/cuda-10.0/lib64/libOpenCL.so")
+    # find_package(OpenCL REQUIRED)
+    include_directories(${OpenCL_INCLUDE_DIR})
+    #  link_directories(${OpenCL_LIBRARY})
+
+    configure_file(kernel_src/ConnectedComponentCL_kernel.cl ${CMAKE_CURRENT_BINARY_DIR}/ConnectedComponentCL_kernel.cl COPYONLY)
+    add_library(algo_ConnectedComponentCL
+        ConnectedComponentCL.h      
+        ConnectedComponentCL.cpp
+        ConnectedComponentCL_impl.cpp)
+    target_link_libraries(
+            algo_ConnectedComponentCL
+            algo_ConnectedComponent
+            ${OpenCL_LIBRARY}
+    )
+
+endif (OpenCL_FOUND)

@@ -18,8 +18,6 @@ __global__ void MSGApply_kernel(Vertex *vSet, int numOfInitV, int *initVSet, dou
 				vSet[vID].isActive = true;
 			}
 		}
-
-		else;
 	}
 }
 
@@ -45,7 +43,8 @@ __global__ void MSGGenMerge_kernel(unsigned long long int *mTransformdMergedMSGV
 	if(tid < numOfEdge)
 	{
 		int vID = -1;
-		if(vSet[eSet[tid].src].isActive) vID = eSet[tid].dst;
+		//if(vSet[eSet[tid].src].isActive) vID = eSet[tid].dst;
+        vID = eSet[tid].dst;
 
 		if(vID != -1)
 		{
