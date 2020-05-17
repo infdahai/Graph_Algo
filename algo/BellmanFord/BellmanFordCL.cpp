@@ -4,6 +4,8 @@
 #define Check_Err(m, n) checkErrorFileLine(m, n, __FILE__, __LINE__)
 #define GetMaxPerDev(clcontext) getMaxFlopsDev(clcontext)
 
+#define INVALID_DOUBLE_NUMBER 2147483647
+
 //#define DEBUG_CL_H
 
 #ifdef DEBUG_CL_H
@@ -264,7 +266,7 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGApply1(Graph<VertexValu
     auto mValues1 = new MessageValueType[g.vCount * this->numOfInitV];
 
     for (int i = 0; i < g.vCount * this->numOfInitV; i++)
-        mValues1[i] = (MessageValueType)INVALID_MASSAGE;
+        mValues1[i] = (MessageValueType)INVALID_DOUBLE_NUMBER;
     for (int i = 0; i < mSet.mSet.size(); i++)
     {
         int mValues_ind = mSet.mSet.at(i).dst * this->numOfInitV + g.vList.at(mSet.mSet.at(i).src).initVIndex;
@@ -274,18 +276,28 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGApply1(Graph<VertexValu
     }
     std::cout << "MSGAPPLY:\n"
               << std::endl;
+
     Buffer_alloc1(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues1, g.vCount,
                   g.eCount, 1);
 
     MSGInitial_array_kernel_2 = clCreateKernel(program, "MSGInitial_array_2", &errNum);
     Check_Err(errNum, CL_SUCCESS);
-    MSGApply_array_kernel = clCreateKernel(program, "MSGApply_array1", &errNum);
-    Check_Err(errNum, CL_SUCCESS);
-
     errNum |= clSetKernelArg(MSGInitial_array_kernel_2, 0, sizeof(cl_mem), &this->vSet);
     errNum |= clSetKernelArg(MSGInitial_array_kernel_2, 1, sizeof(int), &g.vCount);
     Check_Err(errNum, CL_SUCCESS);
+    errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_2,
+                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    Check_Err(errNum, CL_SUCCESS);
+    /*
+    errNum = clEnqueueReadBuffer(comman_queue, this->vSet, CL_FALSE, 0,
+                                 sizeof(Vertex) * g.vCount,
+                                 g.vList.data(), 0,NULL, &readDone);
+                                 */
+    Check_Err(errNum, CL_SUCCESS);
+    clWaitForEvents(1, &readDone);
 
+    MSGApply_array_kernel = clCreateKernel(program, "MSGApply_array1", &errNum);
+    Check_Err(errNum, CL_SUCCESS);
     errNum |= clSetKernelArg(MSGApply_array_kernel, 0, sizeof(cl_mem), &this->vSet);
     errNum |= clSetKernelArg(MSGApply_array_kernel, 1, sizeof(cl_mem), &this->eSet);
     errNum |= clSetKernelArg(MSGApply_array_kernel, 2, sizeof(cl_mem), &this->vValues);
@@ -293,10 +305,6 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGApply1(Graph<VertexValu
     errNum |= clSetKernelArg(MSGApply_array_kernel, 4, sizeof(int), &g.vCount);
     errNum |= clSetKernelArg(MSGApply_array_kernel, 5, sizeof(int), &g.eCount);
     errNum |= clSetKernelArg(MSGApply_array_kernel, 6, sizeof(int), &this->numOfInitV);
-    Check_Err(errNum, CL_SUCCESS);
-
-    errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_2,
-                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
     Check_Err(errNum, CL_SUCCESS);
     errNum = clEnqueueNDRangeKernel(comman_queue, MSGApply_array_kernel,
                                     1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
@@ -309,7 +317,7 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGApply1(Graph<VertexValu
     Check_Err(errNum, CL_SUCCESS);
     clWaitForEvents(1, &readDone);
     errNum = clEnqueueReadBuffer(comman_queue, this->vSet, CL_FALSE, 0,
-                                 sizeof(MessageValueType) * g.vCount,
+                                 sizeof(Vertex) * g.vCount,
                                  g.vList.data(), 0, NULL, &readDone);
     Check_Err(errNum, CL_SUCCESS);
     clWaitForEvents(1, &readDone);
@@ -324,6 +332,11 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGApply1(Graph<VertexValu
     delete[] mValues1;
 
     return activeVertice.size();
+}
+
+template <typename VertexValueType, typename MessageValueType>
+void BellmanFordCL<VertexValueType, MessageValueType>::MSGInitial_array_1(Graph<VertexValueType> &g)
+{
 }
 
 template <typename VertexValueType, typename MessageValueType>
@@ -343,14 +356,26 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL1(Graph<Vert
                   g.eCount, 0);
     //  void Buffer_alloc(const Vertex *vSet, const Edge *eSet, int numOfInitV, const int *initVSet, const VertexValueType *vValues, MessageValueType *mValues);
 
-    DEBUG_INFO
     MSGInitial_array_kernel_1 = clCreateKernel(program, "MSGInitial_array_1", &errNum);
-    MSGGenMerge_array_CL_kernel = clCreateKernel(program, "MSGGenMerge_array_CL1", &errNum);
-    Check_Err(errNum, CL_SUCCESS);
-
     errNum |= clSetKernelArg(MSGInitial_array_kernel_1, 0, sizeof(cl_mem), &this->mValues);
     errNum |= clSetKernelArg(MSGInitial_array_kernel_1, 1, sizeof(int), &g.vCount);
     errNum |= clSetKernelArg(MSGInitial_array_kernel_1, 2, sizeof(int), &this->numOfInitV);
+    Check_Err(errNum, CL_SUCCESS);
+
+    DEBUG_INFO
+    errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_1,
+                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    Check_Err(errNum, CL_SUCCESS);
+    errNum = clEnqueueReadBuffer(comman_queue, this->mValues, CL_FALSE, 0,
+                                 sizeof(MessageValueType) * this->numOfInitV * g.vCount,
+                                 mValues1, 0, NULL, &readDone);
+    clWaitForEvents(1, &readDone);
+    Check_Err(errNum, CL_SUCCESS);
+
+    Buffer_alloc1(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues1, g.vCount,
+                  g.eCount, 1);
+
+    MSGGenMerge_array_CL_kernel = clCreateKernel(program, "MSGGenMerge_array_CL1", &errNum);
     Check_Err(errNum, CL_SUCCESS);
 
     errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 0, sizeof(cl_mem), &this->vSet);
@@ -362,15 +387,10 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL1(Graph<Vert
     errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 6, sizeof(int), &this->numOfInitV);
     Check_Err(errNum, CL_SUCCESS);
 
-    DEBUG_INFO
-    errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_1,
-                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
-    Check_Err(errNum, CL_SUCCESS);
     //MSGGenMerge_array(g.vCount, g.eCount, &g.vList[0], &g.eList[0], this->numOfInitV, &initVSet[0], &g.verticesValue[0], mValues)
     errNum = clEnqueueNDRangeKernel(comman_queue, MSGGenMerge_array_CL_kernel,
                                     1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
     Check_Err(errNum, CL_SUCCESS);
-
     errNum = clEnqueueReadBuffer(comman_queue, this->mValues, CL_FALSE, 0,
                                  sizeof(MessageValueType) * this->numOfInitV * g.vCount,
                                  mValues1, 0, NULL, &readDone);
@@ -381,7 +401,7 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL1(Graph<Vert
     {
         std::cout << "mValues1[" << i << "]:" << mValues1[i] << std::endl;
         //   if (mValues1[i] != (MessageValueType)INVALID_MASSAGE)
-        if (mValues1[i] < (MessageValueType)(INVALID_MASSAGE - 1))
+        if (mValues1[i] < (MessageValueType)(INVALID_DOUBLE_NUMBER - 1))
         // accuracy warning
         {
             DEBUG_INFO
@@ -401,7 +421,7 @@ void BellmanFordCL<VertexValueType, MessageValueType>::Free()
     BellmanFord<VertexValueType, MessageValueType>::Free();
 
     errNum |= clReleaseEvent(readDone);
-    
+
     errNum |= clReleaseKernel(MSGApply_array_kernel);
 
     errNum |= clReleaseKernel(MSGGenMerge_array_CL_kernel);
@@ -443,7 +463,8 @@ void BellmanFordCL<VertexValueType, MessageValueType>::Free_little()
 
 template <typename VertexValueType, typename MessageValueType>
 void BellmanFordCL<VertexValueType, MessageValueType>::ApplyStep(Graph<VertexValueType> &g,
-                                                                 std::vector<int> &initVSet, std::set<int> &activeVertices)
+                                                                 std::vector<int> &initVSet,
+                                                                 std::set<int> &activeVertices)
 {
     auto mGenSet = MessageSet<MessageValueType>();
     auto mMergedSet = MessageSet<MessageValueType>();
