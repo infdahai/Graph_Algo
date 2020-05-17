@@ -33,3 +33,27 @@ if(CUDA_FOUND)
                 algo_PageRankGPU_kernel)
     
  endif(CUDA_FOUND)
+
+ 
+set(OpenCL_FOUND TRUE)
+
+if (OpenCL_FOUND)
+
+    set(OpenCL_INCLUDE_DIR "/usr/local/cuda-10.0/include")
+    set(OpenCL_LIBRARY "/usr/local/cuda-10.0/lib64/libOpenCL.so")
+    # find_package(OpenCL REQUIRED)
+    include_directories(${OpenCL_INCLUDE_DIR})
+    #  link_directories(${OpenCL_LIBRARY})
+
+    configure_file(kernel_src/PageRankCL_kernel.cl ${CMAKE_CURRENT_BINARY_DIR}/PageRankCL_kernel.cl COPYONLY)
+    add_library(algo_PageRankCL
+                PageRankCL.h      
+                PageRankCL.cpp
+                PageRankCL_impl.cpp)
+    target_link_libraries(
+            algo_PageRankCL
+            algo_PageRank
+            ${OpenCL_LIBRARY}
+    )
+
+endif (OpenCL_FOUND)

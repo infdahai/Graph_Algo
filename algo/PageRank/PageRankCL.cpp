@@ -1,5 +1,4 @@
-
-#include "LabelPropagationCL.h"
+#include "PageRankCL.h"
 
 #include <iostream>
 #include <fstream>
@@ -7,12 +6,13 @@
 #include <cfloat>
 #include <ctime>
 #include <chrono>
+#include <algorithm>
 
 #define Check_Err(m, n) checkErrorFileLine(m, n, __FILE__, __LINE__)
 #define GetMaxPerDev(clcontext) getMaxFlopsDev(clcontext)
 
 template <typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::
+void PageRankCL<VertexValueType, MessageValueType>::
     loadAndBuildProgram(cl_context context, const char *file_name)
 {
     std::ifstream kernelFile(file_name, std::ios::in);
@@ -47,15 +47,17 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::
 }
 
 template <typename VertexValueType, typename MessageValueType>
-LabelPropagationCL<VertexValueType, MessageValueType>::LabelPropagationCL()
+PageRankCL<VertexValueType, MessageValueType>::PageRankCL()
 {
+    PageRank<VertexValueType, MessageValueType>::PageRank();
 }
+
 template <typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex *vSet1, Edge *eSet1,
-                                                                         int numOfInitV,
-                                                                         VertexValueType *vValues1,
-                                                                         MessageValueType *mValues1, int vcount,
-                                                                         int ecount, int flag)
+void PageRankCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex *vSet1, Edge *eSet1,
+                                                                 int numOfInitV,
+                                                                 VertexValueType *vValues1,
+                                                                 MessageValueType *mValues1, int vcount,
+                                                                 int ecount, int flag)
 {
 
     if (flag == 0)
@@ -70,7 +72,7 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex 
                                      sizeof(VertexValueType) * vcount, vValues1, &errNum);
         Check_Err(errNum, CL_SUCCESS);
         hostMValues = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
-                                     sizeof(MessageValueType) * ecount, mValues1, &errNum);
+                                     sizeof(MessageValueType) * vcount, mValues1, &errNum);
         Check_Err(errNum, CL_SUCCESS);
 
         vSet = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(Vertex) * vcount, NULL, &errNum);
@@ -81,7 +83,7 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex 
         vValues = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(VertexValueType) * vcount, NULL,
                                  &errNum);
         Check_Err(errNum, CL_SUCCESS);
-        mValues = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(MessageValueType) * ecount, NULL,
+        mValues = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(MessageValueType) * vcount, NULL,
                                  &errNum);
         Check_Err(errNum, CL_SUCCESS);
 
@@ -98,7 +100,7 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex 
         Check_Err(errNum, CL_SUCCESS);
 
         errNum = clEnqueueCopyBuffer(comman_queue, hostMValues, mValues, 0, 0,
-                                     sizeof(MessageValueType) * ecount, 0, NULL, NULL);
+                                     sizeof(MessageValueType) * vcount, 0, NULL, NULL);
         Check_Err(errNum, CL_SUCCESS);
     }
     if (flag == 1)
@@ -109,16 +111,16 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex 
                                                  mValues1, &errNum);
         Check_Err(errNum, CL_SUCCESS);
         errNum = clEnqueueCopyBuffer(comman_queue, hostMValues_temp, mValues, 0, 0,
-                                     sizeof(MessageValueType) * ecount, 0, NULL, NULL);
+                                     sizeof(MessageValueType) * vcount, 0, NULL, NULL);
         Check_Err(errNum, CL_SUCCESS);
         clReleaseMemObject(hostMValues_temp);
     }
 }
 
 template <typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::Init(int vCount, int eCount, int numOfInitV)
+void PageRankCL<VertexValueType, MessageValueType>::Init(int vCount, int eCount, int numOfInitV)
 {
-    LabelPropagation<VertexValueType, MessageValueType>::Init(vCount, eCount, numOfInitV);
+    PageRank<VertexValueType, MessageValueType>::Init(vCount, eCount, numOfInitV);
 
     cl_platform_id *platformIds;
     cl_uint numPlatforms, device_count;
@@ -138,7 +140,7 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Init(int vCount, int
     cl_device_id device_id = GetMaxPerDev(gpu_context);
     this->comman_queue = clCreateCommandQueue(gpu_context, device_id, 0, &errNum);
 
-    loadAndBuildProgram(gpu_context, "../algo/LabelPropagation/LabelPropagationCL_kernel.cl");
+    loadAndBuildProgram(gpu_context, "../algo/PageRank/LabelPropagationCL_kernel.cl");
     size_t max_workgroup_size;
     clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_workgroup_size, NULL);
     std::cout << "max_group_size : " << max_workgroup_size << std::endl;
@@ -147,21 +149,21 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Init(int vCount, int
 }
 
 template <typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::GraphInit(Graph<VertexValueType> &g, std::set<int> &activeVertices, const std::vector<int> &initVList)
+void PageRankCL<VertexValueType, MessageValueType>::GraphInit(Graph<VertexValueType> &g, std::set<int> &activeVertices, const std::vector<int> &initVList)
 {
-    LabelPropagation<VertexValueType, MessageValueType>::GraphInit(g, active, initVList);
+    PageRank<VertexValueType, MessageValueType>::GraphInit(g, active, initVList);
 }
 
 template <typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::Deploy(int vCount, int eCount, int numOfInitV)
+void PageRankCL<VertexValueType, MessageValueType>::Deploy(int vCount, int eCount, int numOfInitV)
 {
-    LabelPropagation<VertexValueType, MessageValueType>::Deploy(vCount, eCount, numOfInitV);
+    PageRank<VertexValueType, MessageValueType>::Deploy(vCount, eCount, numOfInitV);
 }
 
 template <typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::Free()
+void PageRankCL<VertexValueType, MessageValueType>::Free()
 {
-    LabelPropagation<VertexValueType, MessageValueType>::Free();
+    PageRank<VertexValueType, MessageValueType>::Free();
     errNum = CL_SUCCESS;
 
     errNum |= clReleaseEvent(readDone);
@@ -169,6 +171,10 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Free()
     errNum |= clReleaseKernel(MSGApply_array_kernel);
 
     errNum |= clReleaseKernel(MSGGenMerge_array_CL_kernel);
+
+    errNum |= clReleaseKernel(MSGInitial_array_kernel_1);
+
+    errNum |= clReleaseKernel(MSGInitial_array_kernel_2);
 
     errNum |= clReleaseCommandQueue(comman_queue);
 
@@ -178,23 +184,34 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Free()
 }
 
 template <typename VertexValueType, typename MessageValueType>
-int LabelPropagationCL<VertexValueType, MessageValueType>::MSGApply_CL(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice, const MessageSet<MessageValueType> &mSet)
+int PageRankCL<VertexValueType, MessageValueType>::MSGApply_CL(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice, const MessageSet<MessageValueType> &mSet)
 {
+    //Availability check
     if (g.eCount <= 0 || g.vCount <= 0)
         return 0;
 
-    //mValues init
-    MessageValueType *mValues = new MessageValueType[g.eCount];
+    auto msgSize = mSet.mSet.size();
 
-    for (int i = 0; i < g.eCount; i++)
+    //mValues init
+    MessageValueType *mValues = new MessageValueType[msgSize];
+
+    for (int i = 0; i < msgSize; i++)
     {
         mValues[i] = mSet.mSet.at(i).value;
     }
 
     //array form computation
-    std::cout << "msg apply array..." << std::endl;
     Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
                  g.eCount, 1);
+    MSGInitial_array_kernel_2 = clCreateKernel(program, "MSGInitial_array_kernel_2", &errNum);
+    Check_Err(errNum, CL_SUCCESS);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel_2, 0, sizeof(cl_mem), &this->vSet);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel_2, 1, sizeof(int), &g.vCount);
+    Check_Err(errNum, CL_SUCCESS);
+    errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_2,
+                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    Check_Err(errNum, CL_SUCCESS);
+
     MSGApply_array_kernel = clCreateKernel(program, "MSGApply_array_CL", &errNum);
     Check_Err(errNum, CL_SUCCESS);
     errNum |= clSetKernelArg(MSGApply_array_kernel, 0, sizeof(cl_mem), &this->vSet);
@@ -214,29 +231,48 @@ int LabelPropagationCL<VertexValueType, MessageValueType>::MSGApply_CL(Graph<Ver
                                  g.verticesValue.data(), 0, NULL, &readDone);
     Check_Err(errNum, CL_SUCCESS);
     clWaitForEvents(1, &readDone);
+    errNum = clEnqueueReadBuffer(comman_queue, this->vSet, CL_FALSE, 0,
+                                 sizeof(Vertex) * g.vCount,
+                                 g.vList.data(), 0, NULL, &readDone);
+    Check_Err(errNum, CL_SUCCESS);
+    clWaitForEvents(1, &readDone);
 
-    std::cout << "msg apply array end" << std::endl;
+    //test
+    //    std::cout << "=============apply info================" << std::endl;
+    //    for(int i = 0; i < g.vCount; i++)
+    //    {
+    //        std::cout << g.vList[i].isActive << " " << g.verticesValue[i].first << " " << g.verticesValue[i].second << std::endl;
+    //    }
+    //    std::cout << "================end====================" << std::endl;
+
+    //test
+    //    std::cout << avCount << std::endl;
 
     delete[] mValues;
-
-    return 0;
+    int avCount = 10;
+    return avCount;
 }
 
 template <typename VertexValueType, typename MessageValueType>
-int LabelPropagationCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(const Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice, MessageSet<MessageValueType> &mSet)
+int PageRankCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(const Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice, MessageSet<MessageValueType> &mSet)
 {
     //Availability check
     if (g.eCount <= 0 || g.vCount <= 0)
         return 0;
 
     //mValues init
-    MessageValueType *mValues = new MessageValueType[g.eCount];
-
-    //array form computation
-    std::cout << "msg merge array..." << std::endl;
+    MessageValueType *mValues = new MessageValueType[g.vCount];
 
     Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
                  g.eCount, 0);
+    MSGInitial_array_kernel_1 = clCreateKernel(program, "MSGInitial_array_kernel_1", &errNum);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel_1, 0, sizeof(cl_mem), &this->mValues);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel_1, 1, sizeof(int), &g.vCount);
+    Check_Err(errNum, CL_SUCCESS);
+    errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_1,
+                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    Check_Err(errNum, CL_SUCCESS);
+
     MSGGenMerge_array_CL_kernel = clCreateKernel(program, "MSGGenMerge_array_CL", &errNum);
     Check_Err(errNum, CL_SUCCESS);
     errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 0, sizeof(cl_mem), &this->vSet);
@@ -246,35 +282,44 @@ int LabelPropagationCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(const 
     errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 4, sizeof(int), &g.vCount);
     errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 5, sizeof(int), &g.eCount);
     errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 6, sizeof(int), &this->numOfInitV);
+    errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 7, sizeof(int), &this->deltaThreshold);
+    errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 8, sizeof(int), &this->resetProb);
     Check_Err(errNum, CL_SUCCESS);
+
     errNum = clEnqueueNDRangeKernel(comman_queue, MSGGenMerge_array_CL_kernel,
                                     1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
-
     Check_Err(errNum, CL_SUCCESS);
     errNum = clEnqueueReadBuffer(comman_queue, this->mValues, CL_FALSE, 0,
-                                 sizeof(MessageValueType) * g.eCount,
+                                 sizeof(MessageValueType) * g.vCount,
                                  mValues, 0, NULL, &readDone);
     clWaitForEvents(1, &readDone);
     Check_Err(errNum, CL_SUCCESS);
 
-    std::cout << "msg merge array... end" << std::endl;
-
+    int msgCnt = g.vCount;
     //Generate merged msgs directly
     mSet.mSet.clear();
-    mSet.mSet.reserve(g.eCount);
+    mSet.mSet.reserve(msgCnt);
 
-    for (int i = 0; i < g.eCount; i++)
+    for (int i = 0; i < msgCnt; i++)
     {
-        mSet.insertMsg(Message<MessageValueType>(g.eList.at(i).src, g.eList.at(i).dst, mValues[i]));
+        mSet.insertMsg(Message<MessageValueType>(0, mValues[i].destVId, mValues[i]));
     }
+
+    //test
+    //    std::cout << "=============msg info============" << std::endl;
+    //    for(int i = 0; i < msgCnt; i++)
+    //    {
+    //        std::cout << mValues[i].destVId << " " << mValues[i].rank << std::endl;
+    //    }
+    //    std::cout << "===============end===============" << std::endl;
 
     delete[] mValues;
 
-    return g.eCount;
+    return msgCnt;
 }
 
 template <typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::ApplyStep(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertices)
+void PageRankCL<VertexValueType, MessageValueType>::ApplyStep(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertices)
 {
     MessageSet<MessageValueType> mMergedSet = MessageSet<MessageValueType>();
 
@@ -289,27 +334,36 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::ApplyStep(Graph<Vert
 }
 
 template <typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexValueType> &g, const std::vector<int> &initVList, int partitionCount)
+void PageRankCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexValueType> &g, const std::vector<int> &initVList, int partitionCount)
 {
-    std::set<int> activeVertices = {};
-    std::vector<std::set<int>> AVSet = {};
-    auto mGenSetSet = std::vector<MessageSet<MessageValueType>>();
-    auto mMergedSetSet = std::vector<MessageSet<MessageValueType>>();
+    //Init the Graph
+    std::set<int> activeVertice = std::set<int>();
+
+    std::vector<std::set<int>> AVSet = std::vector<std::set<int>>();
     for (int i = 0; i < partitionCount; i++)
-    {
         AVSet.push_back(std::set<int>());
+    std::vector<MessageSet<MessageValueType>> mGenSetSet = std::vector<MessageSet<MessageValueType>>();
+    for (int i = 0; i < partitionCount; i++)
         mGenSetSet.push_back(MessageSet<MessageValueType>());
+    std::vector<MessageSet<MessageValueType>> mMergedSetSet = std::vector<MessageSet<MessageValueType>>();
+    for (int i = 0; i < partitionCount; i++)
         mMergedSetSet.push_back(MessageSet<MessageValueType>());
-    }
+
     Init(g.vCount, g.eCount, initVList.size());
-    GraphInit(g, activeVertices, initVList);
+
+    GraphInit(g, activeVertice, initVList);
+
     Deploy(g.vCount, g.eCount, initVList.size());
 
     int iterCount = 0;
 
-    while (iterCount < 100)
+    bool isActive = true;
+
+    while (isActive)
     {
-        //std::cout << "iterCount: " << iterCount << std::endl;
+        isActive = false;
+
+        std::cout << "iterCount: " << iterCount << std::endl;
         auto start = std::chrono::system_clock::now();
         auto subGraphSet = this->DivideGraphByEdge(g, partitionCount);
         auto divideGraphFinish = std::chrono::system_clock::now();
@@ -323,16 +377,37 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<Vert
         MergeGraph(g, subGraphSet, activeVertice, AVSet, initVList);
         iterCount++;
         auto end = std::chrono::system_clock::now();
+
+        for (int i = 0; i < g.vCount; i++)
+        {
+            if (g.vList.at(i).isActive)
+            {
+                isActive = true;
+                break;
+            }
+        }
+
+        //test
+        //        for(int i = 0; i < g.vCount; i++)
+        //        {
+        //            //std::cout << "outdegree: " << g.vList.at(i).outDegree << std::endl;
+        //            std::cout << i << " " << g.verticesValue.at(i).first << " " << g.verticesValue.at(i).second << std::endl;
+        //        }
+
+        //time test
+        std::cout << "merge time: " << std::chrono::duration_cast<std::chrono::microseconds>(end - mergeGraphStart).count() << std::endl;
     }
 
     for (int i = 0; i < g.vCount; i++)
-        std::cout << g.verticesValue.at(i).first << std::endl;
+    {
+        std::cout << i << " " << g.verticesValue.at(i).first << " " << g.verticesValue.at(i).second << std::endl;
+    }
 
     Free();
 }
 
 template <typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::Free_little()
+void PageRankCL<VertexValueType, MessageValueType>::Free_little()
 {
     errNum = CL_SUCCESS;
 
@@ -356,11 +431,11 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Free_little()
 }
 
 template <typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::MergeGraph(Graph<VertexValueType> &g, const std::vector<Graph<VertexValueType>> &subGSet,
-                                                                       std::set<int> &activeVertices, const std::vector<std::set<int>> &activeVerticeSet,
-                                                                       const std::vector<int> &initVList)
+void PageRankCL<VertexValueType, MessageValueType>::MergeGraph(Graph<VertexValueType> &g, const std::vector<Graph<VertexValueType>> &subGSet,
+                                                               std::set<int> &activeVertices, const std::vector<std::set<int>> &activeVerticeSet,
+                                                               const std::vector<int> &initVList)
 {
-    LabelPropagation<VertexValueType, MessageValueType>::MergeGraph(g, subGSet, activeVertices, activeVerticeSet, initVList);
+    PageRank<VertexValueType, MessageValueType>::MergeGraph(g, subGSet, activeVertices, activeVerticeSet, initVList);
 }
 int roundWorkSize(int group_size, int total_size)
 {

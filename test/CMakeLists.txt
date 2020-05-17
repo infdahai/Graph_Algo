@@ -136,6 +136,22 @@ if (OpenCL_FOUND)
                 core_Graph
                 core_MessageSet
                 core_GraphUtil)
+
+        add_executable(algo_PageRanktCLTest
+                PageRankCL_Test.cpp)
+        target_link_libraries(algo_PageRankCLTest
+                algo_PageRankCL
+                core_Graph
+                core_MessageSet
+                core_GraphUtil)
+
+        add_executable(algo_PageRanktCLTest
+                PageRankCL_Test.cpp)
+        target_link_libraries(algo_PageRankCLTest
+                algo_PageRankCL
+                core_Graph
+                core_MessageSet
+                core_GraphUtil)
 endif (OpenCL_FOUND)
 
 
