@@ -11,10 +11,18 @@
 #define Check_Err(m, n) checkErrorFileLine(m, n, __FILE__, __LINE__)
 #define GetMaxPerDev(clcontext) getMaxFlopsDev(clcontext)
 
-template <typename VertexValueType, typename MessageValueType>
+int roundWorkSize(int group_size, int total_size) {
+    int rem = total_size % group_size;
+    if (rem == 0) {
+        return total_size;
+    } else {
+        return total_size + group_size - rem;
+    }
+}
+
+template<typename VertexValueType, typename MessageValueType>
 void PageRankCL<VertexValueType, MessageValueType>::
-    loadAndBuildProgram(cl_context context, const char *file_name)
-{
+loadAndBuildProgram(cl_context context, const char *file_name) {
     std::ifstream kernelFile(file_name, std::ios::in);
     Check_Err(kernelFile.is_open(), true);
 
@@ -27,41 +35,37 @@ void PageRankCL<VertexValueType, MessageValueType>::
     Check_Err((sourceFile != NULL), true);
 
     // std::cout << "\tcontext:" << context << "\tfile_name" << file_name << std::endl;
-    this->program = clCreateProgramWithSource(context, 1, (const char **)&sourceFile, NULL, &errNum);
+    this->program = clCreateProgramWithSource(context, 1, (const char **) &sourceFile, NULL, &errNum);
     Check_Err(errNum, CL_SUCCESS);
     errNum = clBuildProgram(this->program, 0, NULL, NULL, NULL, NULL);
     char clBuildLog[10240];
-    if (errNum != CL_SUCCESS)
-    {
+    if (errNum != CL_SUCCESS) {
         clGetProgramBuildInfo(this->program, devices[0], CL_PROGRAM_BUILD_LOG, sizeof(clBuildLog),
                               clBuildLog, NULL);
         std::cerr << clBuildLog << std::endl;
         Check_Err(errNum, CL_SUCCESS);
-    }
-    else
-    {
+    } else {
         clGetProgramBuildInfo(this->program, devices[0], CL_PROGRAM_BUILD_LOG, sizeof(clBuildLog),
                               clBuildLog, NULL);
         printf("Kernel Build Success\n%s\n", clBuildLog);
     }
 }
 
-template <typename VertexValueType, typename MessageValueType>
-PageRankCL<VertexValueType, MessageValueType>::PageRankCL()
-{
-    PageRank<VertexValueType, MessageValueType>::PageRank();
+template<typename VertexValueType, typename MessageValueType>
+PageRankCL<VertexValueType, MessageValueType>::PageRankCL() {
+    // PageRank<VertexValueType, MessageValueType>::PageRank();
+    this->resetProb = 0.15;
+    this->deltaThreshold = 0.01;
 }
 
-template <typename VertexValueType, typename MessageValueType>
+template<typename VertexValueType, typename MessageValueType>
 void PageRankCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex *vSet1, Edge *eSet1,
                                                                  int numOfInitV,
                                                                  VertexValueType *vValues1,
                                                                  MessageValueType *mValues1, int vcount,
-                                                                 int ecount, int flag)
-{
+                                                                 int ecount, int flag) {
 
-    if (flag == 0)
-    {
+    if (flag == 0) {
         hostVSet = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
                                   sizeof(Vertex) * vcount, vSet1, &errNum);
         Check_Err(errNum, CL_SUCCESS);
@@ -103,8 +107,7 @@ void PageRankCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex *vSet1, 
                                      sizeof(MessageValueType) * vcount, 0, NULL, NULL);
         Check_Err(errNum, CL_SUCCESS);
     }
-    if (flag == 1)
-    {
+    if (flag == 1) {
         cl_mem hostMValues_temp = clCreateBuffer(this->gpu_context,
                                                  CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
                                                  sizeof(MessageValueType) * vcount,
@@ -117,30 +120,29 @@ void PageRankCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex *vSet1, 
     }
 }
 
-template <typename VertexValueType, typename MessageValueType>
-void PageRankCL<VertexValueType, MessageValueType>::Init(int vCount, int eCount, int numOfInitV)
-{
+template<typename VertexValueType, typename MessageValueType>
+void PageRankCL<VertexValueType, MessageValueType>::Init(int vCount, int eCount, int numOfInitV) {
     PageRank<VertexValueType, MessageValueType>::Init(vCount, eCount, numOfInitV);
 
     cl_platform_id *platformIds;
     cl_uint numPlatforms, device_count;
     errNum = clGetPlatformIDs(0, NULL, &numPlatforms);
     std::cout << "\tNumber of OpenCL Platforms: \t" << numPlatforms << std::endl;
-    platformIds = (cl_platform_id *)alloca(sizeof(cl_platform_id) * numPlatforms);
+    platformIds = (cl_platform_id *) alloca(sizeof(cl_platform_id) * numPlatforms);
     errNum = clGetPlatformIDs(numPlatforms, platformIds, NULL);
     errNum = clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_ALL, 0, NULL, &device_count);
-    devices = (cl_device_id *)alloca(sizeof(cl_device_id) * device_count);
+    devices = (cl_device_id *) alloca(sizeof(cl_device_id) * device_count);
     errNum = clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_ALL, device_count, devices, NULL);
     cl_context_properties context_properties[] = {
-        CL_CONTEXT_PLATFORM,
-        (cl_context_properties)platformIds[0],
-        (cl_context_properties)NULL};
+            CL_CONTEXT_PLATFORM,
+            (cl_context_properties) platformIds[0],
+            (cl_context_properties) NULL};
 
     gpu_context = clCreateContextFromType(context_properties, CL_DEVICE_TYPE_GPU, NULL, NULL, &errNum);
     cl_device_id device_id = GetMaxPerDev(gpu_context);
     this->comman_queue = clCreateCommandQueue(gpu_context, device_id, 0, &errNum);
 
-    loadAndBuildProgram(gpu_context, "../algo/PageRank/LabelPropagationCL_kernel.cl");
+    loadAndBuildProgram(gpu_context, "../algo/PageRank/PageRankCL_kernel.cl");
     size_t max_workgroup_size;
     clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_workgroup_size, NULL);
     std::cout << "max_group_size : " << max_workgroup_size << std::endl;
@@ -148,21 +150,19 @@ void PageRankCL<VertexValueType, MessageValueType>::Init(int vCount, int eCount,
     global_work_size = roundWorkSize(local_work_size, vCount);
 }
 
-template <typename VertexValueType, typename MessageValueType>
-void PageRankCL<VertexValueType, MessageValueType>::GraphInit(Graph<VertexValueType> &g, std::set<int> &activeVertices, const std::vector<int> &initVList)
-{
-    PageRank<VertexValueType, MessageValueType>::GraphInit(g, active, initVList);
+template<typename VertexValueType, typename MessageValueType>
+void PageRankCL<VertexValueType, MessageValueType>::GraphInit(Graph<VertexValueType> &g, std::set<int> &activeVertices,
+                                                              const std::vector<int> &initVList) {
+    PageRank<VertexValueType, MessageValueType>::GraphInit(g, activeVertices, initVList);
 }
 
-template <typename VertexValueType, typename MessageValueType>
-void PageRankCL<VertexValueType, MessageValueType>::Deploy(int vCount, int eCount, int numOfInitV)
-{
+template<typename VertexValueType, typename MessageValueType>
+void PageRankCL<VertexValueType, MessageValueType>::Deploy(int vCount, int eCount, int numOfInitV) {
     PageRank<VertexValueType, MessageValueType>::Deploy(vCount, eCount, numOfInitV);
 }
 
-template <typename VertexValueType, typename MessageValueType>
-void PageRankCL<VertexValueType, MessageValueType>::Free()
-{
+template<typename VertexValueType, typename MessageValueType>
+void PageRankCL<VertexValueType, MessageValueType>::Free() {
     PageRank<VertexValueType, MessageValueType>::Free();
     errNum = CL_SUCCESS;
 
@@ -183,9 +183,11 @@ void PageRankCL<VertexValueType, MessageValueType>::Free()
     Check_Err(errNum, CL_SUCCESS);
 }
 
-template <typename VertexValueType, typename MessageValueType>
-int PageRankCL<VertexValueType, MessageValueType>::MSGApply_CL(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice, const MessageSet<MessageValueType> &mSet)
-{
+template<typename VertexValueType, typename MessageValueType>
+int
+PageRankCL<VertexValueType, MessageValueType>::MSGApply_CL(Graph<VertexValueType> &g, const std::vector<int> &initVSet,
+                                                           std::set<int> &activeVertice,
+                                                           const MessageSet<MessageValueType> &mSet) {
     //Availability check
     if (g.eCount <= 0 || g.vCount <= 0)
         return 0;
@@ -195,8 +197,7 @@ int PageRankCL<VertexValueType, MessageValueType>::MSGApply_CL(Graph<VertexValue
     //mValues init
     MessageValueType *mValues = new MessageValueType[msgSize];
 
-    for (int i = 0; i < msgSize; i++)
-    {
+    for (int i = 0; i < msgSize; i++) {
         mValues[i] = mSet.mSet.at(i).value;
     }
 
@@ -253,9 +254,11 @@ int PageRankCL<VertexValueType, MessageValueType>::MSGApply_CL(Graph<VertexValue
     return avCount;
 }
 
-template <typename VertexValueType, typename MessageValueType>
-int PageRankCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(const Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice, MessageSet<MessageValueType> &mSet)
-{
+template<typename VertexValueType, typename MessageValueType>
+int PageRankCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<VertexValueType> &g,
+                                                                  const std::vector<int> &initVSet,
+                                                                  std::set<int> &activeVertice,
+                                                                  MessageSet<MessageValueType> &mSet) {
     //Availability check
     if (g.eCount <= 0 || g.vCount <= 0)
         return 0;
@@ -300,8 +303,7 @@ int PageRankCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(const Graph<Ve
     mSet.mSet.clear();
     mSet.mSet.reserve(msgCnt);
 
-    for (int i = 0; i < msgCnt; i++)
-    {
+    for (int i = 0; i < msgCnt; i++) {
         mSet.insertMsg(Message<MessageValueType>(0, mValues[i].destVId, mValues[i]));
     }
 
@@ -318,9 +320,10 @@ int PageRankCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(const Graph<Ve
     return msgCnt;
 }
 
-template <typename VertexValueType, typename MessageValueType>
-void PageRankCL<VertexValueType, MessageValueType>::ApplyStep(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertices)
-{
+template<typename VertexValueType, typename MessageValueType>
+void
+PageRankCL<VertexValueType, MessageValueType>::ApplyStep(Graph<VertexValueType> &g, const std::vector<int> &initVSet,
+                                                         std::set<int> &activeVertices) {
     MessageSet<MessageValueType> mMergedSet = MessageSet<MessageValueType>();
 
     mMergedSet.mSet.clear();
@@ -333,19 +336,20 @@ void PageRankCL<VertexValueType, MessageValueType>::ApplyStep(Graph<VertexValueT
     auto applyEnd = std::chrono::system_clock::now();
 }
 
-template <typename VertexValueType, typename MessageValueType>
-void PageRankCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexValueType> &g, const std::vector<int> &initVList, int partitionCount)
-{
+template<typename VertexValueType, typename MessageValueType>
+void
+PageRankCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexValueType> &g, const std::vector<int> &initVList,
+                                                         int partitionCount) {
     //Init the Graph
     std::set<int> activeVertice = std::set<int>();
 
-    std::vector<std::set<int>> AVSet = std::vector<std::set<int>>();
+    std::vector <std::set<int>> AVSet = std::vector < std::set < int >> ();
     for (int i = 0; i < partitionCount; i++)
         AVSet.push_back(std::set<int>());
-    std::vector<MessageSet<MessageValueType>> mGenSetSet = std::vector<MessageSet<MessageValueType>>();
+    std::vector <MessageSet<MessageValueType>> mGenSetSet = std::vector<MessageSet<MessageValueType>>();
     for (int i = 0; i < partitionCount; i++)
         mGenSetSet.push_back(MessageSet<MessageValueType>());
-    std::vector<MessageSet<MessageValueType>> mMergedSetSet = std::vector<MessageSet<MessageValueType>>();
+    std::vector <MessageSet<MessageValueType>> mMergedSetSet = std::vector<MessageSet<MessageValueType>>();
     for (int i = 0; i < partitionCount; i++)
         mMergedSetSet.push_back(MessageSet<MessageValueType>());
 
@@ -359,8 +363,7 @@ void PageRankCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexValueT
 
     bool isActive = true;
 
-    while (isActive)
-    {
+    while (isActive) {
         isActive = false;
 
         std::cout << "iterCount: " << iterCount << std::endl;
@@ -378,10 +381,8 @@ void PageRankCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexValueT
         iterCount++;
         auto end = std::chrono::system_clock::now();
 
-        for (int i = 0; i < g.vCount; i++)
-        {
-            if (g.vList.at(i).isActive)
-            {
+        for (int i = 0; i < g.vCount; i++) {
+            if (g.vList.at(i).isActive) {
                 isActive = true;
                 break;
             }
@@ -395,20 +396,19 @@ void PageRankCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexValueT
         //        }
 
         //time test
-        std::cout << "merge time: " << std::chrono::duration_cast<std::chrono::microseconds>(end - mergeGraphStart).count() << std::endl;
+        std::cout << "merge time: "
+                  << std::chrono::duration_cast<std::chrono::microseconds>(end - mergeGraphStart).count() << std::endl;
     }
 
-    for (int i = 0; i < g.vCount; i++)
-    {
+    for (int i = 0; i < g.vCount; i++) {
         std::cout << i << " " << g.verticesValue.at(i).first << " " << g.verticesValue.at(i).second << std::endl;
     }
 
     Free();
 }
 
-template <typename VertexValueType, typename MessageValueType>
-void PageRankCL<VertexValueType, MessageValueType>::Free_little()
-{
+template<typename VertexValueType, typename MessageValueType>
+void PageRankCL<VertexValueType, MessageValueType>::Free_little() {
     errNum = CL_SUCCESS;
 
     errNum |= clReleaseMemObject(hostESet);
@@ -430,30 +430,18 @@ void PageRankCL<VertexValueType, MessageValueType>::Free_little()
     Check_Err(errNum, CL_SUCCESS);
 }
 
-template <typename VertexValueType, typename MessageValueType>
-void PageRankCL<VertexValueType, MessageValueType>::MergeGraph(Graph<VertexValueType> &g, const std::vector<Graph<VertexValueType>> &subGSet,
-                                                               std::set<int> &activeVertices, const std::vector<std::set<int>> &activeVerticeSet,
-                                                               const std::vector<int> &initVList)
-{
+template<typename VertexValueType, typename MessageValueType>
+void PageRankCL<VertexValueType, MessageValueType>::MergeGraph(Graph<VertexValueType> &g,
+                                                               const std::vector <Graph<VertexValueType>> &subGSet,
+                                                               std::set<int> &activeVertices,
+                                                               const std::vector <std::set<int>> &activeVerticeSet,
+                                                               const std::vector<int> &initVList) {
     PageRank<VertexValueType, MessageValueType>::MergeGraph(g, subGSet, activeVertices, activeVerticeSet, initVList);
 }
-int roundWorkSize(int group_size, int total_size)
-{
-    int rem = total_size % group_size;
-    if (rem == 0)
-    {
-        return total_size;
-    }
-    else
-    {
-        return total_size + group_size - rem;
-    }
-}
 
-void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber)
-{
-    if (errNum != expected)
-    {
+
+void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber) {
+    if (errNum != expected) {
         std::cout << "\nCheck Error:" << std::endl;
         // std::cerr << "Line : " << lineNumber << " in File_ " << file << std::endl;
         std::cout << "Line : " << lineNumber << " in File_ " << file << std::endl;
@@ -462,15 +450,14 @@ void checkErrorFileLine(int errNum, int expected, const char *file, const int li
     }
 }
 
-cl_device_id getMaxFlopsDev(cl_context cxGPUContext)
-{
+cl_device_id getMaxFlopsDev(cl_context cxGPUContext) {
     size_t szParmDataBytes;
     cl_device_id *cdDevices;
 
     // get the list of GPU devices associated with context
     clGetContextInfo(cxGPUContext, CL_CONTEXT_DEVICES, 0, NULL,
                      &szParmDataBytes);
-    cdDevices = (cl_device_id *)malloc(szParmDataBytes);
+    cdDevices = (cl_device_id *) malloc(szParmDataBytes);
     size_t device_count = szParmDataBytes / sizeof(cl_device_id);
 
     clGetContextInfo(cxGPUContext, CL_CONTEXT_DEVICES, szParmDataBytes,
@@ -494,8 +481,7 @@ cl_device_id getMaxFlopsDev(cl_context cxGPUContext)
     max_flops = compute_units * clock_frequency;
     ++current_device;
 
-    while (current_device < device_count)
-    {
+    while (current_device < device_count) {
         // CL_DEVICE_MAX_COMPUTE_UNITS
         cl_uint compute_units;
         clGetDeviceInfo(cdDevices[current_device], CL_DEVICE_MAX_COMPUTE_UNITS,
@@ -508,8 +494,7 @@ cl_device_id getMaxFlopsDev(cl_context cxGPUContext)
                         &clock_frequency, NULL);
 
         int flops = compute_units * clock_frequency;
-        if (flops > max_flops)
-        {
+        if (flops > max_flops) {
             max_flops = flops;
             max_flops_device = cdDevices[current_device];
         }

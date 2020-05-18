@@ -4,7 +4,7 @@
 #ifndef GRAPH_ALGO_PAGERANK_CL_H
 #define GRAPH_ALGO_PAGERANK_CL_H
 
-#include "PAGERANK.h"
+#include "PageRank.h"
 
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -25,7 +25,7 @@ public:
                     const std::vector<int> &initVList) override;
 
     int MSGApply_CL(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice, const MessageSet<MessageValueType> &mSet);
-    int MSGGenMerge_CL(const Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice, MessageSet<MessageValueType> &mSet);
+    int MSGGenMerge_CL( Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice, MessageSet<MessageValueType> &mSet);
 
     void Init(int vCount, int eCount, int numOfInitV) override;
     void GraphInit(Graph<VertexValueType> &g, std::set<int> &activeVertices, const std::vector<int> &initVList) override;
@@ -63,7 +63,7 @@ protected:
 
     cl_device_id *devices;
 
-    cl_event readDone;
+
     cl_kernel MSGApply_array_kernel;
     cl_kernel MSGGenMerge_array_CL_kernel;
     cl_kernel MSGInitial_array_kernel_1;

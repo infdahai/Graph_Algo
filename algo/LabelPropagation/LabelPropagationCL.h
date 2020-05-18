@@ -5,7 +5,7 @@
 #ifndef GRAPH_ALGO_LABELPROPAGATION_CL_H
 #define GRAPH_ALGO_LABELPROPAGATION_CL_H
 
-#include "LABELPROPAGATION.h"
+#include "LabelPropagation.h"
 
 #ifdef __APPLE__
 #include <OpenCL/cl.h>
@@ -15,30 +15,39 @@
 
 #endif
 
-template <typename VertexValueType, typename MessageValueType>
-class LabelPropagationCL : public LabelPropagation<VertexValueType, MessageValueType>
-{
+template<typename VertexValueType, typename MessageValueType>
+class LabelPropagationCL : public LabelPropagation<VertexValueType, MessageValueType> {
 public:
     LabelPropagationCL();
 
-    void MergeGraph(Graph<VertexValueType> &g, const std::vector<Graph<VertexValueType>> &subGSet,
-                    std::set<int> &activeVertices, const std::vector<std::set<int>> &activeVerticeSet,
+    void MergeGraph(Graph<VertexValueType> &g, const std::vector <Graph<VertexValueType>> &subGSet,
+                    std::set<int> &activeVertices, const std::vector <std::set<int>> &activeVerticeSet,
                     const std::vector<int> &initVList) override;
 
-    int MSGApply_CL(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice, const MessageSet<MessageValueType> &mSet);
-    int MSGGenMerge_CL(const Graph<VertexValueType> &g,const std::vector<int> &initVSet, std::set<int> &activeVertice, MessageSet<MessageValueType> &mSet);
+    int MSGApply_CL(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice,
+                    const MessageSet<MessageValueType> &mSet);
+
+    int MSGGenMerge_CL(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice,
+                       MessageSet<MessageValueType> &mSet);
 
     void Init(int vCount, int eCount, int numOfInitV) override;
-    void GraphInit(Graph<VertexValueType> &g, std::set<int> &activeVertices, const std::vector<int> &initVList) override;
+
+    void
+    GraphInit(Graph<VertexValueType> &g, std::set<int> &activeVertices, const std::vector<int> &initVList) override;
+
     void Deploy(int vCount, int eCount, int numOfInitV) override;
+
     void Free() override;
 
     void loadAndBuildProgram(cl_context, const char *);
+
     void Buffer_alloc(Vertex *vSet, Edge *eSet, int numOfInitV, VertexValueType *vValues,
                       MessageValueType *mValues, int vcount, int ecount, int flag);
 
     void ApplyStep(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertices);
+
     void ApplyD_CL(Graph<VertexValueType> &g, const std::vector<int> &initVList, int partitionCount);
+
     void Free_little();
 
 protected:
@@ -64,7 +73,6 @@ protected:
 
     cl_device_id *devices;
 
-    cl_event readDone;
     cl_kernel MSGApply_array_kernel;
     cl_kernel MSGGenMerge_array_CL_kernel;
 

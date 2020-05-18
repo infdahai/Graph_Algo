@@ -6,18 +6,11 @@
 
 int main(int argc, char *argv[])
 {
-    if(argc != 4)
-    {
-        std::cout << "Usage:" << std::endl << "./algo_PageRankTest graph_path vcount ecount" << std::endl;
-        return 1;
-    }
-
-    //Read the Graph
-    std::ifstream Gin(argv[1]);
+    std::ifstream Gin("testGraph.txt");
     if(!Gin.is_open()) {std::cout << "Error! File testGraph.txt not found!" << std::endl; return 1; }
 
-    int vCount = atoi(argv[2]);
-    int eCount = atoi(argv[3]);
+    int vCount, eCount;
+    Gin >> vCount >> eCount;
 
     Graph<std::pair<double, double>> test = Graph<std::pair<double, double>>(vCount);
     for(int i = 0; i < eCount; i++)

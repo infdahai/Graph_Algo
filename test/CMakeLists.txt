@@ -137,7 +137,8 @@ if (OpenCL_FOUND)
                 core_MessageSet
                 core_GraphUtil)
 
-        add_executable(algo_PageRanktCLTest
+
+        add_executable(algo_PageRankCLTest
                 PageRankCL_Test.cpp)
         target_link_libraries(algo_PageRankCLTest
                 algo_PageRankCL
@@ -145,13 +146,7 @@ if (OpenCL_FOUND)
                 core_MessageSet
                 core_GraphUtil)
 
-        add_executable(algo_PageRanktCLTest
-                PageRankCL_Test.cpp)
-        target_link_libraries(algo_PageRankCLTest
-                algo_PageRankCL
-                core_Graph
-                core_MessageSet
-                core_GraphUtil)
+
 endif (OpenCL_FOUND)
 
 
@@ -217,7 +212,7 @@ if(UNIX)
                 algo_ConnectedComponentGPU)
     ENDIF(CUDA_FOUND)
 
-    set(OpenCL_FOUND TRUE)
+#[[    set(OpenCL_FOUND TRUE)
     if(OpenCL_FOUND)
         add_executable(srv_UtilServerTest_BellmanFordCL
         UtilServerTest_BellmanFordCL.cpp)
@@ -229,6 +224,7 @@ if(UNIX)
                 algo_BellmanFord
                 algo_BellmanFordCL)
     endif(OpenCL_FOUD)
+    ]]
 
     add_executable(srv_UtilServerTest_BellmanFord
             UtilServerTest_BellmanFord.cpp)
