@@ -53,7 +53,7 @@ __kernel void MSGGenMerge_array_CL(__global Vertex *vSet, __global Edge *eSet,
   if ((tid >= 0) && (tid < eCount)) {
     if (vSet[eSet[tid].src].isActive) {
       if (mValues[eSet[tid].dst] > vValues[eSet[tid].src])
-        mValues[eSet[tid].dst] = vValues[eSet[i].src];
+        mValues[eSet[tid].dst] = vValues[eSet[tid].src];
     }
   }
 }
