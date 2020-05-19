@@ -45,16 +45,15 @@ __kernel void MSGApply_array_CL(__global Vertex *vSet, __global Edge *eSet,
                                 __global LPA_MSG *mValues, int vCount,
                                 int eCount, int numOfInitV) {
   int tid = get_global_id(0);
-  if ((tid >= 0) && (tid < eCount)) {
+  if ((tid >= 0) && (tid < vCount)) {
     int vid = mValues[tid].destVId;
+    if (vid == -1) {
+      return;
+    }
     if ((vid == -1) || (!vSet[vid].isMaster)) {
       return;
     }
     vValues[tid].label = mValues[tid].label;
+    vSet[vid].isActive = true;
   }
-}
-
-__kernel void MSGInitial_array_1()
-{
-  
 }

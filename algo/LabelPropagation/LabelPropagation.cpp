@@ -88,12 +88,13 @@ int LabelPropagation<VertexValueType, MessageValueType>::MSGGenMerge(const Graph
 template <typename VertexValueType, typename MessageValueType>
 int LabelPropagation<VertexValueType, MessageValueType>::MSGApply_array(int vCount, int eCount, Vertex *vSet, int numOfInitV, const int *initVSet, VertexValueType *vValues, MessageValueType *mValues)
 {
-    for(int i = 0; i < eCount; i++)
+    for(int i = 0; i < vCount; i++)
     {
         auto vid = mValues[i].destVId;
-        if(vid == -1 || !vSet[vid].isMaster) continue;
-
+        if(vid == -1) break;
+        if(!vSet[vid].isMaster) continue;
         vValues[vid].label = mValues[i].label;
+        vSet[vid].isActive = true;
     }
 
     return 0;
@@ -117,7 +118,7 @@ void LabelPropagation<VertexValueType, MessageValueType>::Init(int vCount, int e
     int max = vCount > eCount ? vCount : eCount;
 
     this->totalVValuesCount = vCount;
-    this->totalMValuesCount = eCount;
+    this->totalMValuesCount = max;
 
     this->offsetInMValuesOfEachV = new int [vCount];
 }

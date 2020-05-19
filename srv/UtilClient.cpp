@@ -220,15 +220,13 @@ template<typename VertexValueType, typename MessageValueType>
 void UtilClient<VertexValueType, MessageValueType>::requestMSGApply()
 {
     char tmp[256];
-
     this->client_msq.send("execute_msg_apply", (CLI_MSG_TYPE << MSG_TYPE_OFFSET), 256);
-    while(this->server_msq.recv(tmp, (SRV_MSG_TYPE << MSG_TYPE_OFFSET), 256) != -1)
+    while(this->server_msq.recv(tmp, (SRV_MSG_TYPE << MSG_TYPE_OFFSET), 256))
     {
         if(std::string("finished msg apply") == tmp)
             return;
 
         if(errno == EINTR) continue;
-
 
         perror("msg apply");
     }
