@@ -102,7 +102,7 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex 
         Check_Err(errNum, CL_SUCCESS);
 
         errNum = clEnqueueCopyBuffer(comman_queue, hostMValues, mValues, 0, 0,
-                                     sizeof(MessageValueType) * vcount, 0, NULL, NULL);
+                                     sizeof(MessageValueType) * ecount, 0, NULL, NULL);
         Check_Err(errNum, CL_SUCCESS);
     }
     if (flag == 1) {
@@ -112,7 +112,7 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex 
                                                  mValues1, &errNum);
         Check_Err(errNum, CL_SUCCESS);
         errNum = clEnqueueCopyBuffer(comman_queue, hostMValues_temp, mValues, 0, 0,
-                                     sizeof(MessageValueType) * vcount, 0, NULL, NULL);
+                                     sizeof(MessageValueType) * ecount, 0, NULL, NULL);
         Check_Err(errNum, CL_SUCCESS);
         clReleaseMemObject(hostMValues_temp);
     }
