@@ -212,7 +212,6 @@ if(UNIX)
                 algo_ConnectedComponentGPU)
     ENDIF(CUDA_FOUND)
 
-#[[    set(OpenCL_FOUND TRUE)
     if(OpenCL_FOUND)
         add_executable(srv_UtilServerTest_BellmanFordCL
         UtilServerTest_BellmanFordCL.cpp)
@@ -223,8 +222,39 @@ if(UNIX)
                 srv_UtilServer
                 algo_BellmanFord
                 algo_BellmanFordCL)
+
+        add_executable(srv_UtilServerTest_ConnectedComponentCL
+        UtilServerTest_ConnectedComponentCL.cpp)
+
+        target_link_libraries(srv_UtilServerTest_ConnectedComponentCL
+                srv_UNIX_shm
+                srv_UNIX_msg
+                srv_UtilServer
+                algo_ConnectedComponent
+                algo_ConnectedComponentCL)
+        
+        add_executable(srv_UtilServerTest_LabelPropagationCL
+        UtilServerTest_LabelPropagationCL.cpp)
+
+        target_link_libraries(srv_UtilServerTest_LabelPropagationCL
+                srv_UNIX_shm
+                srv_UNIX_msg
+                srv_UtilServer
+                algo_LabelPropagation
+                algo_LabelPropagationCL)
+
+        add_executable(srv_UtilServerTest_PageRankCL
+        UtilServerTest_PageRankCL.cpp)
+
+        target_link_libraries(srv_UtilServerTest_PageRankCL
+                srv_UNIX_shm
+                srv_UNIX_msg
+                srv_UtilServer
+                algo_PageRank
+                algo_PageRankCL)
+
     endif(OpenCL_FOUD)
-    ]]
+    
 
     add_executable(srv_UtilServerTest_BellmanFord
             UtilServerTest_BellmanFord.cpp)

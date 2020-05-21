@@ -61,43 +61,24 @@ public:
     void Free_little();
 
 protected:
-    int vertexLimit;
-    int mPerMSGSet;
-    int ePerEdgeSet;
-
     cl_mem hostVSet;
     cl_mem hostESet;
-    //   cl_mem host_initVSet;
-    //  cl_int host_avCount;
     cl_mem hostVValues;
     cl_mem hostMValues;
 
     cl_mem vSet;
     cl_mem eSet;
-    //  cl_mem initVSet;
+
     cl_mem vValues;
     cl_mem mValues;
-    //   cl_int avCount;
     cl_kernel MSGApply_array_kernel;
     cl_kernel MSGGenMerge_array_CL_kernel;
     cl_kernel MSGInitial_array_kernel_1;
     cl_kernel MSGInitial_array_kernel_2;
 
-    typedef struct CL_device {
-        cl_context context;
-        cl_device_id device;
-        int numResults;
-
-        CL_device() {
-            context = 0;
-            device = 0;
-            numResults = 0;
-        }
-    } CL_DEVICE;
     bool MutliGPU_isOrNot = false;
     bool GPU_isOrNot = true;
     cl_uint device_count;
-    CL_DEVICE *cl_device_array;
     cl_device_id *devices;
 
     cl_platform_id platform = 0;
@@ -110,16 +91,8 @@ protected:
     cl_kernel kernel;
     cl_int errNum;
     cl_event readDone;
-    //  cl_event copyDone;
     size_t local_work_size;
     size_t global_work_size;
-    // int numOfInitV;
-    // cl_mem vertexArrayDevice;
-    // cl_mem edgeArrayDevice;
-    // cl_mem weightArrayDevice;
-    // cl_mem maskArrayDevice;
-    // cl_mem costArrayDevice;
-    // cl_mem updatingCostArrayDevice;
 
 private:
 };

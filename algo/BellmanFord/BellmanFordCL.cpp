@@ -92,8 +92,7 @@ void BellmanFordCL<VertexValueType, MessageValueType>::
 
     platformIds = (cl_platform_id *)alloca(sizeof(cl_platform_id) * numPlatforms);
     errNum = clGetPlatformIDs(numPlatforms, platformIds, NULL);
-
-    // errNum = clGetPlatformIDs(1, &platform, &numPlatforms);
+    /*
 
     for (cl_uint i = 0; i < numPlatforms; i++)
     {
@@ -102,22 +101,24 @@ void BellmanFordCL<VertexValueType, MessageValueType>::
         displayPlatformInfo(platformIds[i], CL_PLATFORM_VENDOR, "CL_PLATFORM_VENDOR");
         displayPlatformInfo(platformIds[i], CL_PLATFORM_EXTENSIONS, "CL_PLATFORM_EXTENSIONS");
     }
-
+*/
     errNum = clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_ALL, 0, NULL, &device_count);
     devices = (cl_device_id *)alloca(sizeof(cl_device_id) * device_count);
     errNum = clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_ALL, device_count, devices, NULL);
     std::cout << "\tNumber of devices in platform[0]: \t" << device_count << std::endl;
+    /*
     for (cl_uint j = 0; j < device_count; j++)
     {
         displayDeviceInfo<cl_device_type>(devices[j], CL_DEVICE_TYPE, "CL_DEVICE_TYPE");
     }
+    */
 
     cl_context_properties context_properties[] = {
         CL_CONTEXT_PLATFORM,
         (cl_context_properties)platformIds[0],
         (cl_context_properties)NULL};
 
-    // gpu_context = clCreateContext(0, 1, device_count, NULL, NULL, &errNum);
+   // cpu_contxt = clCreateContextFromType(context_properties, CL_DEVICE_TYPE_CPU, NULL, NULL, &errNum);
     gpu_context = clCreateContextFromType(context_properties, CL_DEVICE_TYPE_GPU, NULL, NULL, &errNum);
     if (errNum != CL_SUCCESS)
     {
@@ -137,15 +138,10 @@ void BellmanFordCL<VertexValueType, MessageValueType>::
         {
             cl_device_id device_id = GetMaxPerDev(gpu_context);
             this->comman_queue = clCreateCommandQueue(gpu_context, device_id, 0, &errNum);
-
             loadAndBuildProgram(gpu_context, "../algo/BellmanFord/BellmanFordCL_kernel.cl");
             size_t max_workgroup_size;
             clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_workgroup_size, NULL);
             std::cout << "max_group_size : " << max_workgroup_size << std::endl;
-
-            //local_work_size = max_workgroup_size;
-            // modified:  apply to some small numbers.
-
             local_work_size = max_workgroup_size;
             global_work_size = roundWorkSize(local_work_size, vCount);
         }
@@ -186,12 +182,11 @@ void BellmanFordCL<VertexValueType, MessageValueType>::Buffer_alloc1(Vertex *vSe
         hostMValues = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
                                      sizeof(MessageValueType) * numOfInitV * vcount, mValues1, &errNum);
         Check_Err(errNum, CL_SUCCESS);
-        DEBUG_INFO
 
         std::cout << "\nvSet1: " << vSet << std::endl;
-        DEBUG_INFO
+
         vSet = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(Vertex) * vcount, NULL, &errNum);
-        //vSet = clCreateBuffer(gpu_context, CL_MEM_READ_WRITE, sizeof(Vertex) * global_work_size, NULL);
+
         Check_Err(errNum, CL_SUCCESS);
         eSet = clCreateBuffer(gpu_context, CL_MEM_READ_ONLY, sizeof(Edge) * ecount, NULL, &errNum);
         Check_Err(errNum, CL_SUCCESS);
@@ -207,7 +202,6 @@ void BellmanFordCL<VertexValueType, MessageValueType>::Buffer_alloc1(Vertex *vSe
         errNum = clEnqueueCopyBuffer(comman_queue, hostVSet, vSet, 0, 0,
                                      sizeof(Vertex) * vcount, 0, NULL, NULL);
         Check_Err(errNum, CL_SUCCESS);
-        // opencl sizeof == sizeof(cpp class)
 
         errNum = clEnqueueCopyBuffer(comman_queue, hostESet, eSet, 0, 0,
                                      sizeof(Edge) * ecount, 0, NULL, NULL);
@@ -283,7 +277,6 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGApply1(Graph<VertexValu
                                     1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
     Check_Err(errNum, CL_SUCCESS);
 
-    //     MSGApply_array(g.vCount, g.eCount, &g.vList[0], this->numOfInitV, &initVSet[0], &g.verticesValue[0], mValues);
     errNum = clEnqueueReadBuffer(comman_queue, this->vValues, CL_FALSE, 0,
                                  sizeof(VertexValueType) * this->numOfInitV * g.vCount,
                                  g.verticesValue.data(), 0, NULL, &readDone);
@@ -322,8 +315,7 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL1(Graph<Vert
               << std::endl;
     Buffer_alloc1(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues1, g.vCount,
                   g.eCount, 0);
-    //  void Buffer_alloc(const Vertex *vSet, const Edge *eSet, int numOfInitV, const int *initVSet, const VertexValueType *vValues, MessageValueType *mValues);
-
+  
     MSGInitial_array_kernel_1 = clCreateKernel(program, "MSGInitial_array_1", &errNum);
     errNum |= clSetKernelArg(MSGInitial_array_kernel_1, 0, sizeof(cl_mem), &this->mValues);
     errNum |= clSetKernelArg(MSGInitial_array_kernel_1, 1, sizeof(int), &g.vCount);
@@ -334,16 +326,6 @@ int BellmanFordCL<VertexValueType, MessageValueType>::MSGGenMerge_CL1(Graph<Vert
     errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_1,
                                     1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
     Check_Err(errNum, CL_SUCCESS);
-    /*
-    errNum = clEnqueueReadBuffer(comman_queue, this->mValues, CL_FALSE, 0,
-                                 sizeof(MessageValueType) * this->numOfInitV * g.vCount,
-                                 mValues1, 0, NULL, &readDone);
-    clWaitForEvents(1, &readDone);
-    Check_Err(errNum, CL_SUCCESS);
-
-    Buffer_alloc1(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues1, g.vCount,
-                  g.eCount, 1);
-                  */
 
     MSGGenMerge_array_CL_kernel = clCreateKernel(program, "MSGGenMerge_array_CL1", &errNum);
     Check_Err(errNum, CL_SUCCESS);
