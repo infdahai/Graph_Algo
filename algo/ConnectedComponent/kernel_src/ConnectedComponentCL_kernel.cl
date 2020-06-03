@@ -30,7 +30,7 @@ __kernel void MSGInitial_array_2(__global Vertex *vSet, int vCount) {
   }
 }
 
-__kernel void MSGApply_array_CL(__global Vertex *vSet, __global Edge *eSet,
+__kernel void MSGApply_array_CL(__global Vertex *vSet, 
                                 __global int *vValues,
                                 __global int *mValues, int vCount,
                                 int eCount, int numOfInitV) {

@@ -11,19 +11,24 @@
 #define Check_Err(m, n) checkErrorFileLine(m, n, __FILE__, __LINE__)
 #define GetMaxPerDev(clcontext) getMaxFlopsDev(clcontext)
 
-int roundWorkSize(int group_size, int total_size) {
+template <typename VertexValueType, typename MessageValueType>
+int LabelPropagationCL<VertexValueType, MessageValueType>::roundWorkSize(int group_size, int total_size)
+{
     int rem = total_size % group_size;
-    if (rem == 0) {
+    if (rem == 0)
+    {
         return total_size;
-    } else {
+    }
+    else
+    {
         return total_size + group_size - rem;
     }
 }
 
-
-template<typename VertexValueType, typename MessageValueType>
+template <typename VertexValueType, typename MessageValueType>
 void LabelPropagationCL<VertexValueType, MessageValueType>::
-loadAndBuildProgram(cl_context context, const char *file_name) {
+    loadAndBuildProgram(cl_context context, const char *file_name)
+{
     std::ifstream kernelFile(file_name, std::ios::in);
     Check_Err(kernelFile.is_open(), true);
 
@@ -36,34 +41,41 @@ loadAndBuildProgram(cl_context context, const char *file_name) {
     Check_Err((sourceFile != NULL), true);
 
     // std::cout << "\tcontext:" << context << "\tfile_name" << file_name << std::endl;
-    this->program = clCreateProgramWithSource(context, 1, (const char **) &sourceFile, NULL, &errNum);
+    this->program = clCreateProgramWithSource(context, 1, (const char **)&sourceFile, NULL, &errNum);
+    //this->program =clCreateProgramWithBinary(context, 1, (const char **)&sourceFile, NULL, &errNum);
     Check_Err(errNum, CL_SUCCESS);
     errNum = clBuildProgram(this->program, 0, NULL, NULL, NULL, NULL);
     char clBuildLog[10240];
-    if (errNum != CL_SUCCESS) {
+    if (errNum != CL_SUCCESS)
+    {
         clGetProgramBuildInfo(this->program, devices[0], CL_PROGRAM_BUILD_LOG, sizeof(clBuildLog),
                               clBuildLog, NULL);
         std::cerr << clBuildLog << std::endl;
         Check_Err(errNum, CL_SUCCESS);
-    } else {
+    }
+    else
+    {
         clGetProgramBuildInfo(this->program, devices[0], CL_PROGRAM_BUILD_LOG, sizeof(clBuildLog),
                               clBuildLog, NULL);
         printf("Kernel Build Success\n%s\n", clBuildLog);
     }
 }
 
-template<typename VertexValueType, typename MessageValueType>
-LabelPropagationCL<VertexValueType, MessageValueType>::LabelPropagationCL() {
+template <typename VertexValueType, typename MessageValueType>
+LabelPropagationCL<VertexValueType, MessageValueType>::LabelPropagationCL()
+{
 }
 
-template<typename VertexValueType, typename MessageValueType>
+template <typename VertexValueType, typename MessageValueType>
 void LabelPropagationCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex *vSet1, Edge *eSet1,
                                                                          int numOfInitV,
                                                                          VertexValueType *vValues1,
                                                                          MessageValueType *mValues1, int vcount,
-                                                                         int ecount, int flag) {
+                                                                         int ecount, int flag)
+{
 
-    if (flag == 0) {
+    if (flag == 0)
+    {
         hostVSet = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
                                   sizeof(Vertex) * vcount, vSet1, &errNum);
         Check_Err(errNum, CL_SUCCESS);
@@ -105,7 +117,8 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex 
                                      sizeof(MessageValueType) * ecount, 0, NULL, NULL);
         Check_Err(errNum, CL_SUCCESS);
     }
-    if (flag == 1) {
+    if (flag == 1)
+    {
         cl_mem hostMValues_temp = clCreateBuffer(this->gpu_context,
                                                  CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
                                                  sizeof(MessageValueType) * ecount,
@@ -118,29 +131,31 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex 
     }
 }
 
-template<typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::Init(int vCount, int eCount, int numOfInitV) {
+template <typename VertexValueType, typename MessageValueType>
+void LabelPropagationCL<VertexValueType, MessageValueType>::Init(int vCount, int eCount, int numOfInitV)
+{
     LabelPropagation<VertexValueType, MessageValueType>::Init(vCount, eCount, numOfInitV);
 
     cl_platform_id *platformIds;
     cl_uint numPlatforms, device_count;
     errNum = clGetPlatformIDs(0, NULL, &numPlatforms);
     std::cout << "\tNumber of OpenCL Platforms: \t" << numPlatforms << std::endl;
-    platformIds = (cl_platform_id *) alloca(sizeof(cl_platform_id) * numPlatforms);
+    platformIds = (cl_platform_id *)alloca(sizeof(cl_platform_id) * numPlatforms);
     errNum = clGetPlatformIDs(numPlatforms, platformIds, NULL);
     errNum = clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_ALL, 0, NULL, &device_count);
-    devices = (cl_device_id *) alloca(sizeof(cl_device_id) * device_count);
+    devices = (cl_device_id *)alloca(sizeof(cl_device_id) * device_count);
     errNum = clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_ALL, device_count, devices, NULL);
     cl_context_properties context_properties[] = {
-            CL_CONTEXT_PLATFORM,
-            (cl_context_properties) platformIds[0],
-            (cl_context_properties) NULL};
+        CL_CONTEXT_PLATFORM,
+        (cl_context_properties)platformIds[0],
+        (cl_context_properties)NULL};
 
     gpu_context = clCreateContextFromType(context_properties, CL_DEVICE_TYPE_GPU, NULL, NULL, &errNum);
     cl_device_id device_id = GetMaxPerDev(gpu_context);
     this->comman_queue = clCreateCommandQueue(gpu_context, device_id, 0, &errNum);
 
     loadAndBuildProgram(gpu_context, "../algo/LabelPropagation/LabelPropagationCL_kernel.cl");
+    //loadAndBuildProgram(gpu_context, "../algo/LabelPropagation/LabelPropagationCL_kernel.out");
     size_t max_workgroup_size;
     clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_workgroup_size, NULL);
     std::cout << "max_group_size : " << max_workgroup_size << std::endl;
@@ -148,20 +163,23 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Init(int vCount, int
     global_work_size = roundWorkSize(local_work_size, vCount);
 }
 
-template<typename VertexValueType, typename MessageValueType>
+template <typename VertexValueType, typename MessageValueType>
 void LabelPropagationCL<VertexValueType, MessageValueType>::GraphInit(Graph<VertexValueType> &g,
                                                                       std::set<int> &activeVertices,
-                                                                      const std::vector<int> &initVList) {
+                                                                      const std::vector<int> &initVList)
+{
     LabelPropagation<VertexValueType, MessageValueType>::GraphInit(g, activeVertices, initVList);
 }
 
-template<typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::Deploy(int vCount, int eCount, int numOfInitV) {
+template <typename VertexValueType, typename MessageValueType>
+void LabelPropagationCL<VertexValueType, MessageValueType>::Deploy(int vCount, int eCount, int numOfInitV)
+{
     LabelPropagation<VertexValueType, MessageValueType>::Deploy(vCount, eCount, numOfInitV);
 }
 
-template<typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::Free() {
+template <typename VertexValueType, typename MessageValueType>
+void LabelPropagationCL<VertexValueType, MessageValueType>::Free()
+{
     LabelPropagation<VertexValueType, MessageValueType>::Free();
     errNum = CL_SUCCESS;
 
@@ -178,69 +196,15 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Free() {
     Check_Err(errNum, CL_SUCCESS);
 }
 
-template<typename VertexValueType, typename MessageValueType>
-int LabelPropagationCL<VertexValueType, MessageValueType>::MSGApply_CL(Graph<VertexValueType> &g,
-                                                                       const std::vector<int> &initVSet,
-                                                                       std::set<int> &activeVertice,
-                                                                       const MessageSet<MessageValueType> &mSet) {
-    if (g.eCount <= 0 || g.vCount <= 0)
-        return 0;
-
-    //mValues init
-    MessageValueType *mValues = new MessageValueType[g.eCount];
-
-    for (int i = 0; i < g.eCount; i++) {
-        mValues[i] = mSet.mSet.at(i).value;
-    }
-
-    //array form computation
-    std::cout << "msg apply array..." << std::endl;
-    Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
-                 g.eCount, 1);
-    MSGApply_array_kernel = clCreateKernel(program, "MSGApply_array_CL", &errNum);
-    Check_Err(errNum, CL_SUCCESS);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 0, sizeof(cl_mem), &this->vSet);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 1, sizeof(cl_mem), &this->eSet);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 2, sizeof(cl_mem), &this->vValues);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 3, sizeof(cl_mem), &this->mValues);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 4, sizeof(int), &g.vCount);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 5, sizeof(int), &g.eCount);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 6, sizeof(int), &this->numOfInitV);
-    Check_Err(errNum, CL_SUCCESS);
-    errNum = clEnqueueNDRangeKernel(comman_queue, MSGApply_array_kernel,
-                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
-    Check_Err(errNum, CL_SUCCESS);
-
-    errNum = clEnqueueReadBuffer(comman_queue, this->vValues, CL_FALSE, 0,
-                                 sizeof(VertexValueType) * g.vCount,
-                                 g.verticesValue.data(), 0, NULL, &readDone);
-    Check_Err(errNum, CL_SUCCESS);
-    clWaitForEvents(1, &readDone);
-
-    std::cout << "msg apply array end" << std::endl;
-
-    delete[] mValues;
-
-    return 0;
-}
-
-template<typename VertexValueType, typename MessageValueType>
-int LabelPropagationCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<VertexValueType> &g,
-                                                                          const std::vector<int> &initVSet,
-                                                                          std::set<int> &activeVertice,
-                                                                          MessageSet<MessageValueType> &mSet) {
-    //Availability check
-    if (g.eCount <= 0 || g.vCount <= 0)
-        return 0;
-
-    //mValues init
-    MessageValueType *mValues = new MessageValueType[g.eCount];
-
-    //array form computation
-    std::cout << "msg merge array..." << std::endl;
-
-    Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
-                 g.eCount, 0);
+template <typename VertexValueType, typename MessageValueType>
+int LabelPropagationCL<VertexValueType, MessageValueType>::MSGGenMerge_array(int vCount, int eCount, const Vertex *vSet, const Edge *eSet, int numOfInitV, const int *initVSet, const VertexValueType *vValues, MessageValueType *mValues)
+{
+    //this->MSGGenMerge_array(g.vCount, g.eCount, &g.vList[0], &g.eList[0], 0, &initVSet[0], &g.verticesValue[0], mValues);
+    //  Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
+    //              g.eCount, 0);
+    auto vSet = const_cast<Vertex *> vSet;
+    auto eSet = const_cast<Edge *> eSet;
+    Buffer_alloc(vSet, eSet, numOfInitV, vValues, mValues, vCount, eCount, 0);
     MSGGenMerge_array_CL_kernel = clCreateKernel(program, "MSGGenMerge_array_CL", &errNum);
     Check_Err(errNum, CL_SUCCESS);
     errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 0, sizeof(cl_mem), &this->vSet);
@@ -260,14 +224,149 @@ int LabelPropagationCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<
                                  mValues, 0, NULL, &readDone);
     clWaitForEvents(1, &readDone);
     Check_Err(errNum, CL_SUCCESS);
+}
 
+template <typename VertexValueType, typename MessageValueType>
+int LabelPropagationCL<VertexValueType, MessageValueType>::MSGApply_array(int vCount, int eCount, Vertex *vSet, int numOfInitV, const int *initVSet, VertexValueType *vValues, MessageValueType *mValues)
+{
+    //MSGApply_array(g.vCount, g.eCount, &g.vList[0], 0, &initVSet[0], &g.verticesValue[0], mValues);
+
+    //  Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
+    //             g.eCount, 1);
+
+    //TODO: consider eSet
+    Buffer_alloc(vSet, nullptr, numOfInitV, vValues, mValues, vCount, eCount, 1);
+
+    MSGApply_array_kernel = clCreateKernel(program, "MSGApply_array_CL", &errNum);
+    Check_Err(errNum, CL_SUCCESS);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 0, sizeof(cl_mem), &this->vSet);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 1, sizeof(cl_mem), &this->vValues);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 2, sizeof(cl_mem), &this->mValues);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 3, sizeof(int), &g.vCount);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 4, sizeof(int), &g.eCount);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 5, sizeof(int), &this->numOfInitV);
+    Check_Err(errNum, CL_SUCCESS);
+    errNum = clEnqueueNDRangeKernel(comman_queue, MSGApply_array_kernel,
+                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    Check_Err(errNum, CL_SUCCESS);
+
+    errNum = clEnqueueReadBuffer(comman_queue, this->vValues, CL_FALSE, 0,
+                                 sizeof(VertexValueType) * g.vCount,
+                                 vSet, 0, NULL, &readDone);
+    Check_Err(errNum, CL_SUCCESS);
+    clWaitForEvents(1, &readDone);
+}
+
+template <typename VertexValueType, typename MessageValueType>
+int LabelPropagationCL<VertexValueType, MessageValueType>::MSGApply_CL(Graph<VertexValueType> &g,
+                                                                       const std::vector<int> &initVSet,
+                                                                       std::set<int> &activeVertice,
+                                                                       const MessageSet<MessageValueType> &mSet)
+{
+    if (g.eCount <= 0 || g.vCount <= 0)
+        return 0;
+
+    //mValues init
+    MessageValueType *mValues = new MessageValueType[g.eCount];
+
+    for (int i = 0; i < g.eCount; i++)
+    {
+        mValues[i] = mSet.mSet.at(i).value;
+    }
+
+    //array form computation
+    std::cout << "msg apply array..." << std::endl;
+
+    bool flag_apply = false;
+    if (flag_apply)
+    {
+        MSGApply_array(g.vCount, g.eCount, &g.vList[0], 0, &initVSet[0], &g.verticesValue[0], mValues);
+    }
+    else
+    {
+        Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
+                     g.eCount, 1);
+        MSGApply_array_kernel = clCreateKernel(program, "MSGApply_array_CL", &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 0, sizeof(cl_mem), &this->vSet);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 1, sizeof(cl_mem), &this->eSet);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 2, sizeof(cl_mem), &this->vValues);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 3, sizeof(cl_mem), &this->mValues);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 4, sizeof(int), &g.vCount);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 5, sizeof(int), &g.eCount);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 6, sizeof(int), &this->numOfInitV);
+        Check_Err(errNum, CL_SUCCESS);
+        errNum = clEnqueueNDRangeKernel(comman_queue, MSGApply_array_kernel,
+                                        1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+        Check_Err(errNum, CL_SUCCESS);
+
+        errNum = clEnqueueReadBuffer(comman_queue, this->vValues, CL_FALSE, 0,
+                                     sizeof(VertexValueType) * g.vCount,
+                                     g.verticesValue.data(), 0, NULL, &readDone);
+        Check_Err(errNum, CL_SUCCESS);
+        clWaitForEvents(1, &readDone);
+    }
+
+    std::cout << "msg apply array end" << std::endl;
+
+    delete[] mValues;
+
+    return 0;
+}
+
+template <typename VertexValueType, typename MessageValueType>
+int LabelPropagationCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<VertexValueType> &g,
+                                                                          const std::vector<int> &initVSet,
+                                                                          std::set<int> &activeVertice,
+                                                                          MessageSet<MessageValueType> &mSet)
+{
+    //Availability check
+    if (g.eCount <= 0 || g.vCount <= 0)
+        return 0;
+
+    //mValues init
+    MessageValueType *mValues = new MessageValueType[g.eCount];
+
+    //array form computation
+    std::cout << "msg merge array..." << std::endl;
+
+    bool flag_merge = false;
+    if (flag_merge)
+    {
+        this->MSGGenMerge_array(g.vCount, g.eCount, &g.vList[0], &g.eList[0], 0, &initVSet[0], &g.verticesValue[0], mValues);
+    }
+    else
+    {
+        Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
+                     g.eCount, 0);
+        MSGGenMerge_array_CL_kernel = clCreateKernel(program, "MSGGenMerge_array_CL", &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 0, sizeof(cl_mem), &this->vSet);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 1, sizeof(cl_mem), &this->eSet);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 2, sizeof(cl_mem), &this->vValues);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 3, sizeof(cl_mem), &this->mValues);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 4, sizeof(int), &g.vCount);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 5, sizeof(int), &g.eCount);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 6, sizeof(int), &this->numOfInitV);
+        Check_Err(errNum, CL_SUCCESS);
+        errNum = clEnqueueNDRangeKernel(comman_queue, MSGGenMerge_array_CL_kernel,
+                                        1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+
+        Check_Err(errNum, CL_SUCCESS);
+        errNum = clEnqueueReadBuffer(comman_queue, this->mValues, CL_FALSE, 0,
+                                     sizeof(MessageValueType) * g.eCount,
+                                     mValues, 0, NULL, &readDone);
+        clWaitForEvents(1, &readDone);
+        Check_Err(errNum, CL_SUCCESS);
+    }
     std::cout << "msg merge array... end" << std::endl;
 
     //Generate merged msgs directly
     mSet.mSet.clear();
     mSet.mSet.reserve(g.eCount);
 
-    for (int i = 0; i < g.eCount; i++) {
+    for (int i = 0; i < g.eCount; i++)
+    {
         mSet.insertMsg(Message<MessageValueType>(g.eList.at(i).src, g.eList.at(i).dst, mValues[i]));
     }
 
@@ -276,10 +375,11 @@ int LabelPropagationCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<
     return g.eCount;
 }
 
-template<typename VertexValueType, typename MessageValueType>
+template <typename VertexValueType, typename MessageValueType>
 void LabelPropagationCL<VertexValueType, MessageValueType>::ApplyStep(Graph<VertexValueType> &g,
                                                                       const std::vector<int> &initVSet,
-                                                                      std::set<int> &activeVertices) {
+                                                                      std::set<int> &activeVertices)
+{
     MessageSet<MessageValueType> mMergedSet = MessageSet<MessageValueType>();
 
     mMergedSet.mSet.clear();
@@ -292,15 +392,17 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::ApplyStep(Graph<Vert
     auto applyEnd = std::chrono::system_clock::now();
 }
 
-template<typename VertexValueType, typename MessageValueType>
+template <typename VertexValueType, typename MessageValueType>
 void LabelPropagationCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexValueType> &g,
                                                                       const std::vector<int> &initVList,
-                                                                      int partitionCount) {
+                                                                      int partitionCount)
+{
     std::set<int> activeVertices = {};
-    std::vector <std::set<int>> AVSet = {};
+    std::vector<std::set<int>> AVSet = {};
     auto mGenSetSet = std::vector<MessageSet<MessageValueType>>();
     auto mMergedSetSet = std::vector<MessageSet<MessageValueType>>();
-    for (int i = 0; i < partitionCount; i++) {
+    for (int i = 0; i < partitionCount; i++)
+    {
         AVSet.push_back(std::set<int>());
         mGenSetSet.push_back(MessageSet<MessageValueType>());
         mMergedSetSet.push_back(MessageSet<MessageValueType>());
@@ -311,7 +413,7 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<Vert
 
     int iterCount = 0;
 
-    while(iterCount < 60)
+    while (iterCount < 60)
     {
         std::cout << "iterCount: " << iterCount << std::endl;
         auto start = std::chrono::system_clock::now();
@@ -319,7 +421,7 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<Vert
         std::cout << "divide graph..." << std::endl;
         auto subGraphSet = this->DivideGraphByEdge(g, partitionCount);
         auto divideGraphFinish = std::chrono::system_clock::now();
-        for(int i = 0; i < partitionCount; i++)
+        for (int i = 0; i < partitionCount; i++)
             ApplyStep(subGraphSet.at(i), initVList, AVSet.at(i));
         activeVertices.clear();
 
@@ -330,18 +432,19 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<Vert
         iterCount++;
         auto end = std::chrono::system_clock::now();
 
-//        for(int i = 0; i < g.vCount; i++)
-//            std::cout << i << " " << g.verticesValue.at(i).label << std::endl;
+        //        for(int i = 0; i < g.vCount; i++)
+        //            std::cout << i << " " << g.verticesValue.at(i).label << std::endl;
     }
 
-    for(int i = 0; i < g.vCount; i++)
+    for (int i = 0; i < g.vCount; i++)
         std::cout << i << " " << g.verticesValue.at(i).label << std::endl;
 
     Free();
 }
 
-template<typename VertexValueType, typename MessageValueType>
-void LabelPropagationCL<VertexValueType, MessageValueType>::Free_little() {
+template <typename VertexValueType, typename MessageValueType>
+void LabelPropagationCL<VertexValueType, MessageValueType>::Free_little()
+{
     errNum = CL_SUCCESS;
 
     errNum |= clReleaseMemObject(hostESet);
@@ -363,18 +466,22 @@ void LabelPropagationCL<VertexValueType, MessageValueType>::Free_little() {
     Check_Err(errNum, CL_SUCCESS);
 }
 
-template<typename VertexValueType, typename MessageValueType>
+template <typename VertexValueType, typename MessageValueType>
 void LabelPropagationCL<VertexValueType, MessageValueType>::MergeGraph(Graph<VertexValueType> &g,
-                                                                       const std::vector <Graph<VertexValueType>> &subGSet,
+                                                                       const std::vector<Graph<VertexValueType>> &subGSet,
                                                                        std::set<int> &activeVertices,
-                                                                       const std::vector <std::set<int>> &activeVerticeSet,
-                                                                       const std::vector<int> &initVList) {
+                                                                       const std::vector<std::set<int>> &activeVerticeSet,
+                                                                       const std::vector<int> &initVList)
+{
     LabelPropagation<VertexValueType, MessageValueType>::MergeGraph(g, subGSet, activeVertices, activeVerticeSet,
                                                                     initVList);
 }
 
-void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber) {
-    if (errNum != expected) {
+template <typename VertexValueType, typename MessageValueType>
+void LabelPropagationCL<VertexValueType, MessageValueType>::checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber)
+{
+    if (errNum != expected)
+    {
         std::cout << "\nCheck Error:" << std::endl;
         // std::cerr << "Line : " << lineNumber << " in File_ " << file << std::endl;
         std::cout << "Line : " << lineNumber << " in File_ " << file << std::endl;
@@ -383,14 +490,16 @@ void checkErrorFileLine(int errNum, int expected, const char *file, const int li
     }
 }
 
-cl_device_id getMaxFlopsDev(cl_context cxGPUContext) {
+template <typename VertexValueType, typename MessageValueType>
+cl_device_id LabelPropagationCL<VertexValueType, MessageValueType>::getMaxFlopsDev(cl_context cxGPUContext)
+{
     size_t szParmDataBytes;
     cl_device_id *cdDevices;
 
     // get the list of GPU devices associated with context
     clGetContextInfo(cxGPUContext, CL_CONTEXT_DEVICES, 0, NULL,
                      &szParmDataBytes);
-    cdDevices = (cl_device_id *) malloc(szParmDataBytes);
+    cdDevices = (cl_device_id *)malloc(szParmDataBytes);
     size_t device_count = szParmDataBytes / sizeof(cl_device_id);
 
     clGetContextInfo(cxGPUContext, CL_CONTEXT_DEVICES, szParmDataBytes,
@@ -414,7 +523,8 @@ cl_device_id getMaxFlopsDev(cl_context cxGPUContext) {
     max_flops = compute_units * clock_frequency;
     ++current_device;
 
-    while (current_device < device_count) {
+    while (current_device < device_count)
+    {
         // CL_DEVICE_MAX_COMPUTE_UNITS
         cl_uint compute_units;
         clGetDeviceInfo(cdDevices[current_device], CL_DEVICE_MAX_COMPUTE_UNITS,
@@ -427,7 +537,8 @@ cl_device_id getMaxFlopsDev(cl_context cxGPUContext) {
                         &clock_frequency, NULL);
 
         int flops = compute_units * clock_frequency;
-        if (flops > max_flops) {
+        if (flops > max_flops)
+        {
             max_flops = flops;
             max_flops_device = cdDevices[current_device];
         }

@@ -40,7 +40,7 @@ __kernel void MSGGenMerge_array_CL(__global Vertex *vSet, __global Edge *eSet,
   }
 }
 
-__kernel void MSGApply_array_CL(__global Vertex *vSet, __global Edge *eSet,
+__kernel void MSGApply_array_CL(__global Vertex *vSet,
                                 __global LPA_Value *vValues,
                                 __global LPA_MSG *mValues, int vCount,
                                 int eCount, int numOfInitV) {

@@ -24,8 +24,9 @@
 
 #endif
 
-template<typename VertexValueType, typename MessageValueType>
-class BellmanFordCL : public BellmanFord<VertexValueType, MessageValueType> {
+template <typename VertexValueType, typename MessageValueType>
+class BellmanFordCL : public BellmanFord<VertexValueType, MessageValueType>
+{
 public:
     BellmanFordCL();
 
@@ -45,8 +46,8 @@ public:
     MSGGenMerge_CL1(Graph<VertexValueType> &g, std::vector<int> &initVSet, std::set<int> &activeVertice,
                     MessageSet<MessageValueType> &mSet);
 
-    //    int MSGApply_array(int vCount, int eCount, Vertex *vSet, int numOfInitV, const int *initVSet, VertexValueType *vValues,MessageValueType *mValues) override;
-    //   int MSGGenMerge_array(int vCount, int eCount, const Vertex *vSet, const Edge *eSet, int numOfInitV, const int *initVSet, const VertexValueType *vValues, MessageValueType *mValues) override;
+    int MSGApply_array(int vCount, int eCount, Vertex *vSet, int numOfInitV, const int *initVSet, VertexValueType *vValues, MessageValueType *mValues) override;
+    int MSGGenMerge_array(int vCount, int eCount, const Vertex *vSet, const Edge *eSet, int numOfInitV, const int *initVSet, const VertexValueType *vValues, MessageValueType *mValues) override;
 
     //  cl_device_id getMaxFlopsDev(cl_context);
     void loadAndBuildProgram(cl_context, const char *);
@@ -59,6 +60,11 @@ public:
                        MessageValueType *mValues, int vcount, int ecount, int flag);
 
     void Free_little();
+
+    void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber);
+
+    cl_device_id getMaxFlopsDev(cl_context cxGPUContext);
+    int roundWorkSize(int, int);
 
 protected:
     cl_mem hostVSet;
@@ -98,22 +104,16 @@ private:
 };
 
 void displayPlatformInfo(
-        cl_platform_id id,
-        cl_platform_info name,
-        std::string str);
+    cl_platform_id id,
+    cl_platform_info name,
+    std::string str);
 
-template<typename T>
+template <typename T>
 void displayDeviceInfo(
-        cl_device_id id,
-        cl_device_info name,
-        std::string str);
-
-void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber);
-
-cl_device_id getMaxFlopsDev(cl_context cxGPUContext);
+    cl_device_id id,
+    cl_device_info name,
+    std::string str);
 
 int logError(int, const std::string &);
-
-int roundWorkSize(int, int);
 
 #endif //GRAPH_ALGO_BELLMANFORD_CL_H

@@ -11,22 +11,29 @@
 #define Check_Err(m, n) checkErrorFileLine(m, n, __FILE__, __LINE__)
 #define GetMaxPerDev(clcontext) getMaxFlopsDev(clcontext)
 
-int roundWorkSize(int group_size, int total_size) {
+template <typename VertexValueType, typename MessageValueType>
+int ConnectedComponentCL<VertexValueType, MessageValueType>::roundWorkSize(int group_size, int total_size)
+{
     int rem = total_size % group_size;
-    if (rem == 0) {
+    if (rem == 0)
+    {
         return total_size;
-    } else {
+    }
+    else
+    {
         return total_size + group_size - rem;
     }
 }
 
-template<typename VertexValueType, typename MessageValueType>
-ConnectedComponentCL<VertexValueType, MessageValueType>::ConnectedComponentCL() {
+template <typename VertexValueType, typename MessageValueType>
+ConnectedComponentCL<VertexValueType, MessageValueType>::ConnectedComponentCL()
+{
 }
 
-template<typename VertexValueType, typename MessageValueType>
+template <typename VertexValueType, typename MessageValueType>
 void ConnectedComponentCL<VertexValueType, MessageValueType>::
-loadAndBuildProgram(cl_context context, const char *file_name) {
+    loadAndBuildProgram(cl_context context, const char *file_name)
+{
     std::ifstream kernelFile(file_name, std::ios::in);
     Check_Err(kernelFile.is_open(), true);
 
@@ -39,29 +46,35 @@ loadAndBuildProgram(cl_context context, const char *file_name) {
     Check_Err((sourceFile != NULL), true);
 
     // std::cout << "\tcontext:" << context << "\tfile_name" << file_name << std::endl;
-    this->program = clCreateProgramWithSource(context, 1, (const char **) &sourceFile, NULL, &errNum);
+    this->program = clCreateProgramWithSource(context, 1, (const char **)&sourceFile, NULL, &errNum);
+    // this->program = clCreateProgramWithBinary(context, 1, (const char **)&sourceFile, NULL, &errNum);
     Check_Err(errNum, CL_SUCCESS);
     errNum = clBuildProgram(this->program, 0, NULL, NULL, NULL, NULL);
     char clBuildLog[10240];
-    if (errNum != CL_SUCCESS) {
+    if (errNum != CL_SUCCESS)
+    {
 
         clGetProgramBuildInfo(this->program, devices[0], CL_PROGRAM_BUILD_LOG, sizeof(clBuildLog), clBuildLog, NULL);
         std::cerr << clBuildLog << std::endl;
         Check_Err(errNum, CL_SUCCESS);
-    } else {
+    }
+    else
+    {
         clGetProgramBuildInfo(this->program, devices[0], CL_PROGRAM_BUILD_LOG, sizeof(clBuildLog), clBuildLog, NULL);
         //    std::cout << clBuildLog << std::endl;
         printf("Kernel Build Success\n%s\n", clBuildLog);
     }
 }
 
-template<typename VertexValueType, typename MessageValueType>
+template <typename VertexValueType, typename MessageValueType>
 void ConnectedComponentCL<VertexValueType, MessageValueType>::Buffer_alloc(Vertex *vSet1, Edge *eSet1,
                                                                            int numOfInitV,
                                                                            VertexValueType *vValues1,
                                                                            MessageValueType *mValues1, int vcount,
-                                                                           int ecount, int flag) {
-    if (flag == 0) {
+                                                                           int ecount, int flag)
+{
+    if (flag == 0)
+    {
         hostVSet = clCreateBuffer(this->gpu_context, CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
                                   sizeof(Vertex) * vcount, vSet1, &errNum);
         Check_Err(errNum, CL_SUCCESS);
@@ -103,7 +116,8 @@ void ConnectedComponentCL<VertexValueType, MessageValueType>::Buffer_alloc(Verte
                                      sizeof(MessageValueType) * vcount, 0, NULL, NULL);
         Check_Err(errNum, CL_SUCCESS);
     }
-    if (flag == 1) {
+    if (flag == 1)
+    {
         cl_mem hostMValues_temp = clCreateBuffer(this->gpu_context,
                                                  CL_MEM_COPY_HOST_PTR | CL_MEM_ALLOC_HOST_PTR,
                                                  sizeof(MessageValueType) * vcount,
@@ -116,29 +130,31 @@ void ConnectedComponentCL<VertexValueType, MessageValueType>::Buffer_alloc(Verte
     }
 }
 
-template<typename VertexValueType, typename MessageValueType>
-void ConnectedComponentCL<VertexValueType, MessageValueType>::Init(int vCount, int eCount, int numOfInitV) {
+template <typename VertexValueType, typename MessageValueType>
+void ConnectedComponentCL<VertexValueType, MessageValueType>::Init(int vCount, int eCount, int numOfInitV)
+{
     ConnectedComponent<VertexValueType, MessageValueType>::Init(vCount, eCount, numOfInitV);
 
     cl_platform_id *platformIds;
     cl_uint numPlatforms, device_count;
     errNum = clGetPlatformIDs(0, NULL, &numPlatforms);
     std::cout << "\tNumber of OpenCL Platforms: \t" << numPlatforms << std::endl;
-    platformIds = (cl_platform_id *) alloca(sizeof(cl_platform_id) * numPlatforms);
+    platformIds = (cl_platform_id *)alloca(sizeof(cl_platform_id) * numPlatforms);
     errNum = clGetPlatformIDs(numPlatforms, platformIds, NULL);
     errNum = clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_ALL, 0, NULL, &device_count);
-    devices = (cl_device_id *) alloca(sizeof(cl_device_id) * device_count);
+    devices = (cl_device_id *)alloca(sizeof(cl_device_id) * device_count);
     errNum = clGetDeviceIDs(platformIds[0], CL_DEVICE_TYPE_ALL, device_count, devices, NULL);
     cl_context_properties context_properties[] = {
-            CL_CONTEXT_PLATFORM,
-            (cl_context_properties) platformIds[0],
-            (cl_context_properties) NULL};
+        CL_CONTEXT_PLATFORM,
+        (cl_context_properties)platformIds[0],
+        (cl_context_properties)NULL};
 
     gpu_context = clCreateContextFromType(context_properties, CL_DEVICE_TYPE_GPU, NULL, NULL, &errNum);
     cl_device_id device_id = GetMaxPerDev(gpu_context);
     this->comman_queue = clCreateCommandQueue(gpu_context, device_id, 0, &errNum);
 
     loadAndBuildProgram(gpu_context, "../algo/ConnectedComponent/ConnectedComponentCL_kernel.cl");
+    //loadAndBuildProgram(gpu_context, "../algo/ConnectedComponent/ConnectedComponentCL_kernel.out");
     size_t max_workgroup_size;
     clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_workgroup_size, NULL);
     std::cout << "max_group_size : " << max_workgroup_size << std::endl;
@@ -146,94 +162,30 @@ void ConnectedComponentCL<VertexValueType, MessageValueType>::Init(int vCount, i
     global_work_size = roundWorkSize(local_work_size, vCount);
 }
 
-template<typename VertexValueType, typename MessageValueType>
+template <typename VertexValueType, typename MessageValueType>
 void ConnectedComponentCL<VertexValueType, MessageValueType>::GraphInit(Graph<VertexValueType> &g,
                                                                         std::set<int> &activeVertices,
-                                                                        const std::vector<int> &initVList) {
+                                                                        const std::vector<int> &initVList)
+{
     ConnectedComponent<VertexValueType, MessageValueType>::GraphInit(g, activeVertices, initVList);
 }
 
-template<typename VertexValueType, typename MessageValueType>
-void ConnectedComponentCL<VertexValueType, MessageValueType>::Deploy(int vCount, int eCount, int numOfInitV) {
+template <typename VertexValueType, typename MessageValueType>
+void ConnectedComponentCL<VertexValueType, MessageValueType>::Deploy(int vCount, int eCount, int numOfInitV)
+{
     ConnectedComponent<VertexValueType, MessageValueType>::Deploy(vCount, eCount, numOfInitV);
 }
 
-template<typename VertexValueType, typename MessageValueType>
-int
-ConnectedComponentCL<VertexValueType, MessageValueType>::MSGApply_CL(Graph<VertexValueType> &g,
-                                                                     const std::vector<int> &initVSet,
-                                                                     std::set<int> &activeVertice,
-                                                                     const MessageSet<MessageValueType> &mSet) {
-    //Availability check
-    if (g.vCount <= 0)
-        return 0;
+template <typename VertexValueType, typename MessageValueType>
+int ConnectedComponentCL<VertexValueType, MessageValueType>::MSGGenMerge_array(int vCount, int eCount, const Vertex *vSet, const Edge *eSet, int numOfInitV, const int *initVSet, const VertexValueType *vValues, MessageValueType *mValues)
+{
+    // this->MSGGenMerge_array(g.vCount, g.eCount, &g.vList[0], &g.eList[0], 0, nullptr, &g.verticesValue[0], mValues);
 
-    auto *mValues = new MessageValueType[g.vCount];
-    for (int i = 0; i < g.vCount; i++)
-        mValues[i] = INVALID_MASSAGE;
-    for (const auto &m : mSet.mSet)
-        mValues[m.dst] = m.value;
-
-    Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
-                 g.eCount, 1);
-
-    MSGInitial_array_kernel_2 = clCreateKernel(program, "MSGInitial_array_2", &errNum);
-    Check_Err(errNum, CL_SUCCESS);
-    errNum |= clSetKernelArg(MSGInitial_array_kernel_2, 0, sizeof(cl_mem), &vSet);
-    errNum |= clSetKernelArg(MSGInitial_array_kernel_2, 1, sizeof(int), &g.vCount);
-    Check_Err(errNum, CL_SUCCESS);
-    errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_2,
-                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
-    Check_Err(errNum, CL_SUCCESS);
-
-    MSGApply_array_kernel = clCreateKernel(program, "MSGApply_array_CL", &errNum);
-    Check_Err(errNum, CL_SUCCESS);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 0, sizeof(cl_mem), &this->vSet);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 1, sizeof(cl_mem), &this->eSet);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 2, sizeof(cl_mem), &this->vValues);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 3, sizeof(cl_mem), &this->mValues);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 4, sizeof(int), &g.vCount);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 5, sizeof(int), &g.eCount);
-    errNum |= clSetKernelArg(MSGApply_array_kernel, 6, sizeof(int), &this->numOfInitV);
-    Check_Err(errNum, CL_SUCCESS);
-
-    errNum = clEnqueueNDRangeKernel(comman_queue, MSGApply_array_kernel,
-                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
-    Check_Err(errNum, CL_SUCCESS);
-
-    errNum = clEnqueueReadBuffer(comman_queue, this->vValues, CL_FALSE, 0,
-                                 sizeof(VertexValueType) * g.vCount,
-                                 g.verticesValue.data(), 0, NULL, &readDone);
-    Check_Err(errNum, CL_SUCCESS);
-    clWaitForEvents(1, &readDone);
-    errNum = clEnqueueReadBuffer(comman_queue, this->vSet, CL_FALSE, 0,
-                                 sizeof(Vertex) * g.vCount,
-                                 g.vList.data(), 0, NULL, &readDone);
-    Check_Err(errNum, CL_SUCCESS);
-    clWaitForEvents(1, &readDone);
-
-    activeVertice.clear();
-    for (const auto &v : g.vList) {
-        if (v.isActive)
-            activeVertice.insert(v.vertexID);
-    }
-
-    delete[] mValues;
-    return activeVertice.size();
-}
-
-template<typename VertexValueType, typename MessageValueType>
-int ConnectedComponentCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<VertexValueType> &g,
-                                                                            const std::vector<int> &initVSet,
-                                                                            std::set<int> &activeVertice,
-                                                                            MessageSet<MessageValueType> &mSet) {
-    if (g.vCount <= 0)
-        return 0;
-
-    auto *mValues = new MessageValueType[g.vCount];
-    Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
-                 g.eCount, 0);
-
+    // Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
+    //              g.eCount, 0);
+    auto vSet = const_cast<Vertex *> vSet;
+    auto eSet = const_cast<Edge *> eSet;
+    Buffer_alloc(vSet, eSet, numOfInitV, vValues, mValues, vCount, eCount, 0);
     MSGInitial_array_kernel_1 = clCreateKernel(program, "MSGInitial_array_1", &errNum);
     errNum |= clSetKernelArg(MSGInitial_array_kernel_1, 0, sizeof(cl_mem), &this->mValues);
     errNum |= clSetKernelArg(MSGInitial_array_kernel_1, 1, sizeof(int), &g.vCount);
@@ -261,9 +213,177 @@ int ConnectedComponentCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Grap
                                  mValues, 0, NULL, &readDone);
     clWaitForEvents(1, &readDone);
     Check_Err(errNum, CL_SUCCESS);
+}
 
-    for (int i = 0; i < g.vCount; i++) {
-        if (mValues[i] < (MessageValueType) (INVALID_MASSAGE - 1))
+template <typename VertexValueType, typename MessageValueType>
+int ConnectedComponentCL<VertexValueType, MessageValueType>::MSGApply_array(int vCount, int eCount, Vertex *vSet, int numOfInitV, const int *initVSet, VertexValueType *vValues, MessageValueType *mValues)
+{
+    //this->MSGApply_array(g.vCount, g.eCount, &g.vList[0], 0, nullptr, &g.verticesValue[0], mValues);
+    //    Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
+    //                 g.eCount, 1);
+
+    // TODO: consider eSet
+    Buffer_alloc(vSet, nullptr, numOfInitV, vValues, mValues, vCount, eCount, 1);
+
+    MSGInitial_array_kernel_2 = clCreateKernel(program, "MSGInitial_array_2", &errNum);
+    Check_Err(errNum, CL_SUCCESS);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel_2, 0, sizeof(cl_mem), &vSet);
+    errNum |= clSetKernelArg(MSGInitial_array_kernel_2, 1, sizeof(int), &g.vCount);
+    Check_Err(errNum, CL_SUCCESS);
+    errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_2,
+                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    Check_Err(errNum, CL_SUCCESS);
+
+    MSGApply_array_kernel = clCreateKernel(program, "MSGApply_array_CL", &errNum);
+    Check_Err(errNum, CL_SUCCESS);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 0, sizeof(cl_mem), &this->vSet);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 1, sizeof(cl_mem), &this->vValues);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 2, sizeof(cl_mem), &this->mValues);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 3, sizeof(int), &g.vCount);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 4, sizeof(int), &g.eCount);
+    errNum |= clSetKernelArg(MSGApply_array_kernel, 5, sizeof(int), &this->numOfInitV);
+    Check_Err(errNum, CL_SUCCESS);
+
+    errNum = clEnqueueNDRangeKernel(comman_queue, MSGApply_array_kernel,
+                                    1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+    Check_Err(errNum, CL_SUCCESS);
+
+    errNum = clEnqueueReadBuffer(comman_queue, this->vValues, CL_FALSE, 0,
+                                 sizeof(VertexValueType) * g.vCount,
+                                 g.verticesValue.data(), 0, NULL, &readDone);
+    Check_Err(errNum, CL_SUCCESS);
+    clWaitForEvents(1, &readDone);
+    errNum = clEnqueueReadBuffer(comman_queue, this->vSet, CL_FALSE, 0,
+                                 sizeof(Vertex) * g.vCount,
+                                 g.vList.data(), 0, NULL, &readDone);
+    Check_Err(errNum, CL_SUCCESS);
+    clWaitForEvents(1, &readDone);
+}
+
+template <typename VertexValueType, typename MessageValueType>
+int ConnectedComponentCL<VertexValueType, MessageValueType>::MSGApply_CL(Graph<VertexValueType> &g,
+                                                                         const std::vector<int> &initVSet,
+                                                                         std::set<int> &activeVertice,
+                                                                         const MessageSet<MessageValueType> &mSet)
+{
+    //Availability check
+    if (g.vCount <= 0)
+        return 0;
+
+    auto *mValues = new MessageValueType[g.vCount];
+    for (int i = 0; i < g.vCount; i++)
+        mValues[i] = INVALID_MASSAGE;
+    for (const auto &m : mSet.mSet)
+        mValues[m.dst] = m.value;
+
+    bool flag_apply = false;
+    if (flag_apply)
+    {
+    }
+    else
+    {
+        Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
+                     g.eCount, 1);
+
+        MSGInitial_array_kernel_2 = clCreateKernel(program, "MSGInitial_array_2", &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        errNum |= clSetKernelArg(MSGInitial_array_kernel_2, 0, sizeof(cl_mem), &vSet);
+        errNum |= clSetKernelArg(MSGInitial_array_kernel_2, 1, sizeof(int), &g.vCount);
+        Check_Err(errNum, CL_SUCCESS);
+        errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_2,
+                                        1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+        Check_Err(errNum, CL_SUCCESS);
+
+        MSGApply_array_kernel = clCreateKernel(program, "MSGApply_array_CL", &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 0, sizeof(cl_mem), &this->vSet);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 1, sizeof(cl_mem), &this->vValues);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 2, sizeof(cl_mem), &this->mValues);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 3, sizeof(int), &g.vCount);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 4, sizeof(int), &g.eCount);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 5, sizeof(int), &this->numOfInitV);
+        errNum |= clSetKernelArg(MSGApply_array_kernel, 6, sizeof(int), &this->numOfInitV);
+        Check_Err(errNum, CL_SUCCESS);
+
+        errNum = clEnqueueNDRangeKernel(comman_queue, MSGApply_array_kernel,
+                                        1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+        Check_Err(errNum, CL_SUCCESS);
+
+        errNum = clEnqueueReadBuffer(comman_queue, this->vValues, CL_FALSE, 0,
+                                     sizeof(VertexValueType) * g.vCount,
+                                     g.verticesValue.data(), 0, NULL, &readDone);
+        Check_Err(errNum, CL_SUCCESS);
+        clWaitForEvents(1, &readDone);
+        errNum = clEnqueueReadBuffer(comman_queue, this->vSet, CL_FALSE, 0,
+                                     sizeof(Vertex) * g.vCount,
+                                     g.vList.data(), 0, NULL, &readDone);
+        Check_Err(errNum, CL_SUCCESS);
+        clWaitForEvents(1, &readDone);
+    }
+
+    activeVertice.clear();
+    for (const auto &v : g.vList)
+    {
+        if (v.isActive)
+            activeVertice.insert(v.vertexID);
+    }
+
+    delete[] mValues;
+    return activeVertice.size();
+}
+
+template <typename VertexValueType, typename MessageValueType>
+int ConnectedComponentCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Graph<VertexValueType> &g,
+                                                                            const std::vector<int> &initVSet,
+                                                                            std::set<int> &activeVertice,
+                                                                            MessageSet<MessageValueType> &mSet)
+{
+    if (g.vCount <= 0)
+        return 0;
+
+    auto *mValues = new MessageValueType[g.vCount];
+    bool flag_merge = false;
+    if (flag_merge)
+    {
+        this->MSGGenMerge_array(g.vCount, g.eCount, &g.vList[0], &g.eList[0], 0, nullptr, &g.verticesValue[0], mValues);
+    }
+    else
+    {
+        Buffer_alloc(g.vList.data(), g.eList.data(), this->numOfInitV, g.verticesValue.data(), mValues, g.vCount,
+                     g.eCount, 0);
+
+        MSGInitial_array_kernel_1 = clCreateKernel(program, "MSGInitial_array_1", &errNum);
+        errNum |= clSetKernelArg(MSGInitial_array_kernel_1, 0, sizeof(cl_mem), &this->mValues);
+        errNum |= clSetKernelArg(MSGInitial_array_kernel_1, 1, sizeof(int), &g.vCount);
+        Check_Err(errNum, CL_SUCCESS);
+
+        errNum = clEnqueueNDRangeKernel(comman_queue, MSGInitial_array_kernel_1,
+                                        1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+
+        MSGGenMerge_array_CL_kernel = clCreateKernel(program, "MSGGenMerge_array_CL", &errNum);
+        Check_Err(errNum, CL_SUCCESS);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 0, sizeof(cl_mem), &this->vSet);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 1, sizeof(cl_mem), &this->eSet);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 2, sizeof(cl_mem), &this->vValues);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 3, sizeof(cl_mem), &this->mValues);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 4, sizeof(int), &g.vCount);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 5, sizeof(int), &g.eCount);
+        errNum |= clSetKernelArg(MSGGenMerge_array_CL_kernel, 6, sizeof(int), &this->numOfInitV);
+        Check_Err(errNum, CL_SUCCESS);
+        errNum = clEnqueueNDRangeKernel(comman_queue, MSGGenMerge_array_CL_kernel,
+                                        1, NULL, &global_work_size, &local_work_size, 0, NULL, NULL);
+
+        Check_Err(errNum, CL_SUCCESS);
+        errNum = clEnqueueReadBuffer(comman_queue, this->mValues, CL_FALSE, 0,
+                                     sizeof(MessageValueType) * g.vCount,
+                                     mValues, 0, NULL, &readDone);
+        clWaitForEvents(1, &readDone);
+        Check_Err(errNum, CL_SUCCESS);
+    }
+
+    for (int i = 0; i < g.vCount; i++)
+    {
+        if (mValues[i] < (MessageValueType)(INVALID_MASSAGE - 1))
             mSet.insertMsg(Message<VertexValueType>(INVALID_INITV_INDEX, i, mValues[i]));
     }
 
@@ -271,10 +391,11 @@ int ConnectedComponentCL<VertexValueType, MessageValueType>::MSGGenMerge_CL(Grap
     return mSet.mSet.size();
 }
 
-template<typename VertexValueType, typename MessageValueType>
+template <typename VertexValueType, typename MessageValueType>
 void ConnectedComponentCL<VertexValueType, MessageValueType>::ApplyStep(Graph<VertexValueType> &g,
                                                                         const std::vector<int> &initVSet,
-                                                                        std::set<int> &activeVertices) {
+                                                                        std::set<int> &activeVertices)
+{
     auto mGenSet = MessageSet<MessageValueType>();
     auto mMergedSet = MessageSet<MessageValueType>();
 
@@ -295,15 +416,17 @@ void ConnectedComponentCL<VertexValueType, MessageValueType>::ApplyStep(Graph<Ve
     Free_little();
 }
 
-template<typename VertexValueType, typename MessageValueType>
+template <typename VertexValueType, typename MessageValueType>
 void ConnectedComponentCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<VertexValueType> &g,
                                                                         const std::vector<int> &initVList,
-                                                                        int partitionCount) {
+                                                                        int partitionCount)
+{
     std::set<int> activeVertices = {};
-    std::vector <std::set<int>> AVSet = {};
+    std::vector<std::set<int>> AVSet = {};
     auto mGenSetSet = std::vector<MessageSet<MessageValueType>>();
     auto mMergedSetSet = std::vector<MessageSet<MessageValueType>>();
-    for (int i = 0; i < partitionCount; i++) {
+    for (int i = 0; i < partitionCount; i++)
+    {
         AVSet.push_back(std::set<int>());
         mGenSetSet.push_back(MessageSet<MessageValueType>());
         mMergedSetSet.push_back(MessageSet<MessageValueType>());
@@ -316,10 +439,11 @@ void ConnectedComponentCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<Ve
     //std::cout << 1 << std::endl;
 
     Deploy(g.vCount, g.eCount, initVList.size());
-    std::cout<<"hi"<<std::endl;
+    std::cout << "hi" << std::endl;
 
     int iterCount = 0;
-    while (activeVertices.size() > 0) {
+    while (activeVertices.size() > 0)
+    {
         std::cout << "1" << std::endl;
         //Test
         std::cout << ++iterCount << ":" << clock() << std::endl;
@@ -327,7 +451,8 @@ void ConnectedComponentCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<Ve
 
         auto subGraphSet = this->DivideGraphByEdge(g, partitionCount);
 
-        for (int i = 0; i < partitionCount; i++) {
+        for (int i = 0; i < partitionCount; i++)
+        {
             AVSet.at(i).clear();
             AVSet.at(i) = activeVertices;
         }
@@ -340,7 +465,7 @@ void ConnectedComponentCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<Ve
             ApplyStep(subGraphSet.at(i), initVList, AVSet.at(i));
 
         activeVertices.clear();
-        ConnectedComponent<VertexValueType,MessageValueType>::MergeGraph(g, subGraphSet, activeVertices, AVSet, initVList);
+        ConnectedComponent<VertexValueType, MessageValueType>::MergeGraph(g, subGraphSet, activeVertices, AVSet, initVList);
         //Test
         std::cout << "GMerge:" << clock() << std::endl;
         //Test end
@@ -353,10 +478,9 @@ void ConnectedComponentCL<VertexValueType, MessageValueType>::ApplyD_CL(Graph<Ve
     //Test end
 }
 
-
-
-template<typename VertexValueType, typename MessageValueType>
-void ConnectedComponentCL<VertexValueType, MessageValueType>::Free() {
+template <typename VertexValueType, typename MessageValueType>
+void ConnectedComponentCL<VertexValueType, MessageValueType>::Free()
+{
     errNum = CL_SUCCESS;
 
     errNum |= clReleaseEvent(readDone);
@@ -376,8 +500,9 @@ void ConnectedComponentCL<VertexValueType, MessageValueType>::Free() {
     Check_Err(errNum, CL_SUCCESS);
 }
 
-template<typename VertexValueType, typename MessageValueType>
-void ConnectedComponentCL<VertexValueType, MessageValueType>::Free_little() {
+template <typename VertexValueType, typename MessageValueType>
+void ConnectedComponentCL<VertexValueType, MessageValueType>::Free_little()
+{
     errNum = CL_SUCCESS;
 
     errNum |= clReleaseMemObject(hostESet);
@@ -397,11 +522,12 @@ void ConnectedComponentCL<VertexValueType, MessageValueType>::Free_little() {
     errNum |= clReleaseMemObject(vValues);
 
     Check_Err(errNum, CL_SUCCESS);
-
 }
-
-void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber) {
-    if (errNum != expected) {
+template <typename VertexValueType, typename MessageValueType>
+void ConnectedComponentCL<VertexValueType, MessageValueType>::checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber)
+{
+    if (errNum != expected)
+    {
         std::cout << "\nCheck Error:" << std::endl;
         // std::cerr << "Line : " << lineNumber << " in File_ " << file << std::endl;
         std::cout << "Line : " << lineNumber << " in File_ " << file << std::endl;
@@ -410,14 +536,16 @@ void checkErrorFileLine(int errNum, int expected, const char *file, const int li
     }
 }
 
-cl_device_id getMaxFlopsDev(cl_context cxGPUContext) {
+template <typename VertexValueType, typename MessageValueType>
+cl_device_id ConnectedComponentCL<VertexValueType, MessageValueType>::getMaxFlopsDev(cl_context cxGPUContext)
+{
     size_t szParmDataBytes;
     cl_device_id *cdDevices;
 
     // get the list of GPU devices associated with context
     clGetContextInfo(cxGPUContext, CL_CONTEXT_DEVICES, 0, NULL,
                      &szParmDataBytes);
-    cdDevices = (cl_device_id *) malloc(szParmDataBytes);
+    cdDevices = (cl_device_id *)malloc(szParmDataBytes);
     size_t device_count = szParmDataBytes / sizeof(cl_device_id);
 
     clGetContextInfo(cxGPUContext, CL_CONTEXT_DEVICES, szParmDataBytes,
@@ -441,7 +569,8 @@ cl_device_id getMaxFlopsDev(cl_context cxGPUContext) {
     max_flops = compute_units * clock_frequency;
     ++current_device;
 
-    while (current_device < device_count) {
+    while (current_device < device_count)
+    {
         // CL_DEVICE_MAX_COMPUTE_UNITS
         cl_uint compute_units;
         clGetDeviceInfo(cdDevices[current_device], CL_DEVICE_MAX_COMPUTE_UNITS,
@@ -454,7 +583,8 @@ cl_device_id getMaxFlopsDev(cl_context cxGPUContext) {
                         &clock_frequency, NULL);
 
         int flops = compute_units * clock_frequency;
-        if (flops > max_flops) {
+        if (flops > max_flops)
+        {
             max_flops = flops;
             max_flops_device = cdDevices[current_device];
         }

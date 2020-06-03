@@ -15,13 +15,14 @@
 
 #endif
 
-template<typename VertexValueType, typename MessageValueType>
-class LabelPropagationCL : public LabelPropagation<VertexValueType, MessageValueType> {
+template <typename VertexValueType, typename MessageValueType>
+class LabelPropagationCL : public LabelPropagation<VertexValueType, MessageValueType>
+{
 public:
     LabelPropagationCL();
 
-    void MergeGraph(Graph<VertexValueType> &g, const std::vector <Graph<VertexValueType>> &subGSet,
-                    std::set<int> &activeVertices, const std::vector <std::set<int>> &activeVerticeSet,
+    void MergeGraph(Graph<VertexValueType> &g, const std::vector<Graph<VertexValueType>> &subGSet,
+                    std::set<int> &activeVertices, const std::vector<std::set<int>> &activeVerticeSet,
                     const std::vector<int> &initVList) override;
 
     int MSGApply_CL(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice,
@@ -29,6 +30,9 @@ public:
 
     int MSGGenMerge_CL(Graph<VertexValueType> &g, const std::vector<int> &initVSet, std::set<int> &activeVertice,
                        MessageSet<MessageValueType> &mSet);
+
+    int MSGApply_array(int vCount, int eCount, Vertex *vSet, int numOfInitV, const int *initVSet, VertexValueType *vValues, MessageValueType *mValues) override;
+    int MSGGenMerge_array(int vCount, int eCount, const Vertex *vSet, const Edge *eSet, int numOfInitV, const int *initVSet, const VertexValueType *vValues, MessageValueType *mValues) override;
 
     void Init(int vCount, int eCount, int numOfInitV) override;
 
@@ -49,6 +53,12 @@ public:
     void ApplyD_CL(Graph<VertexValueType> &g, const std::vector<int> &initVList, int partitionCount);
 
     void Free_little();
+
+    void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber);
+
+    int roundWorkSize(int, int);
+
+    cl_device_id getMaxFlopsDev(cl_context cxGPUContext);
 
 protected:
     cl_context cpu_contxt, gpu_context = NULL;
@@ -78,11 +88,5 @@ protected:
 
 private:
 };
-
-void checkErrorFileLine(int errNum, int expected, const char *file, const int lineNumber);
-
-int roundWordSize(int, int);
-
-cl_device_id getMaxFlopsDev(cl_context cxGPUContext);
 
 #endif
